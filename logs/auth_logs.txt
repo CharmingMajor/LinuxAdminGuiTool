@@ -1,0 +1,2 @@
+# Logs for authentication attempts
+# TODO: Implement logging logic
