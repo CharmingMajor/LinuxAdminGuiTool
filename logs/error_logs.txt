@@ -1,2 +1,0 @@
-# Logs for errors
-# TODO: Implement error logging
