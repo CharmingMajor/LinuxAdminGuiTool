@@ -48,21 +48,29 @@ To get started with the project, follow these steps:
 
 ```
 linux_gui_manager/
+├── docker/  # Docker-related files
+│   ├── Dockerfile  # Dockerfile for SSH-enabled containers
+│   ├── docker-compose.yml  # For multi-container setup
+│   └── scripts/  # Scripts to automate container setup
 ├── src/
 │   ├── gui/
 │   │   ├── login_window.py
 │   │   ├── pc_connection.py
 │   │   ├── junior_dashboard.py
-│   │   └── senior_dashboard.py
+│   │   ├── senior_dashboard.py
+│   │   └── virtual_pc_manager.py  # Manage Docker containers
 │   ├── backend/
 │   │   ├── auth_backend.py
 │   │   ├── connection_backend.py
 │   │   ├── junior_backend.py
-│   │   └── senior_backend.py
+│   │   ├── senior_backend.py
+│   │   ├── virtual_pc_backend.py  # Backend for Docker container management
+│   │   └── brute_force_prevention.py  # Brute-force prevention logic
 │   └── main.py
 ├── logs/
 │   ├── auth_logs.txt
-│   └── error_logs.txt
+│   ├── error_logs.txt
+│   └── brute_force_logs.txt  # Logs for brute-force attempts
 ├── requirements.txt
 └── README.md
 ```
