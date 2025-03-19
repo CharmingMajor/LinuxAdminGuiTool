@@ -42,7 +42,7 @@ To get started with the project, follow these steps:
    python src/main.py
    ```
 
-2. Follow the on-screen instructions to log in and access the appropriate admin dashboard.
+2. Follow the on-screen instructions to log in and access the appropriate admin dashboard
 
 ## File Structure
 
