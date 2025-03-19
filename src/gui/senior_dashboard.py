@@ -5,6 +5,7 @@ from src.backend.virtual_pc_backend import VirtualPCManager
 class SeniorDashboard(tk.Frame):
     def __init__(self, root, show_login_window):
         super().__init__(root)
+        self.root = root
         self.show_login_window = show_login_window
         self.virtual_pc_manager = VirtualPCManager()
         self.setup_ui()
@@ -51,7 +52,7 @@ class SeniorDashboard(tk.Frame):
             self.container_tree.insert("", tk.END, values=(container.name, container.status, container.attrs["NetworkSettings"]["IPAddress"]))
 
     def start_container(self):
-        """Start a selected Docker container."""
+        """Start a selected Docker container and redirect to the dashboard."""
         selected_item = self.container_tree.selection()
         if not selected_item:
             messagebox.showwarning("No Selection", "Please select a container to start.")
@@ -60,6 +61,9 @@ class SeniorDashboard(tk.Frame):
         container_name = self.container_tree.item(selected_item, "values")[0]
         self.virtual_pc_manager.start_container(container_name)
         self.refresh_containers()
+
+        # Redirect to the senior dashboard
+        self.show_dashboard()
 
     def stop_container(self):
         """Stop a selected Docker container."""
@@ -71,3 +75,10 @@ class SeniorDashboard(tk.Frame):
         container_name = self.container_tree.item(selected_item, "values")[0]
         self.virtual_pc_manager.stop_container(container_name)
         self.refresh_containers()
+
+    def show_dashboard(self):
+        """Redirect to the senior dashboard."""
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        self.senior_dashboard = SeniorDashboard(self.root, self.show_login_window)
+        self.senior_dashboard.pack(fill=tk.BOTH, expand=True)

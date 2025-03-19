@@ -12,9 +12,6 @@ from src.backend.auth_backend import AuthBackend
 
 class MainApplication:
     def __init__(self, root):
-        """
-        Initialize the main application.
-        """
         self.root = root
         self.root.title("Linux GUI Manager")
         self.root.geometry("800x600")
@@ -26,26 +23,18 @@ class MainApplication:
         self.show_login_window()
 
     def show_login_window(self):
-        """
-        Display the login window.
-        """
-        # Clear the current window
+        """Display the login window."""
         for widget in self.root.winfo_children():
             widget.destroy()
 
-        # Create and display the login window
         self.login_window = LoginWindow(self.root, self.auth_backend, self.on_login_success)
         self.login_window.pack(fill=tk.BOTH, expand=True)
 
     def on_login_success(self, username, role):
-        """
-        Callback function when login is successful.
-        """
-        # Clear the current window
+        """Callback function when login is successful."""
         for widget in self.root.winfo_children():
             widget.destroy()
 
-        # Launch the appropriate dashboard based on the user's role
         if role == "junior":
             self.junior_dashboard = JuniorDashboard(self.root, self.show_login_window)
             self.junior_dashboard.pack(fill=tk.BOTH, expand=True)
@@ -54,9 +43,7 @@ class MainApplication:
             self.senior_dashboard.pack(fill=tk.BOTH, expand=True)
 
     def run(self):
-        """
-        Run the application.
-        """
+        """Run the application."""
         self.root.mainloop()
 
 if __name__ == "__main__":
