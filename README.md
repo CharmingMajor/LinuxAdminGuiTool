@@ -27,7 +27,7 @@ To get started with the project, follow these steps:
 
 2. Navigate into the project directory:
    ```bash
-   cd linux_gui_manager
+   cd linux_gui_manager 
    ```
 
 3. Install the required dependencies:

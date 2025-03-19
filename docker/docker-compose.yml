@@ -1,0 +1,20 @@
+version: '3'
+services:
+  pc1:
+    image: ssh-container
+    container_name: pc1
+    networks:
+      my-custom-network:
+        ipv4_address: 172.18.0.2
+  pc2:
+    image: ssh-container
+    container_name: pc2
+    networks:
+      my-custom-network:
+        ipv4_address: 172.18.0.3
+networks:
+  my-custom-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
