@@ -12,6 +12,12 @@ services:
     networks:
       my-custom-network:
         ipv4_address: 172.18.0.3
+  pc3:
+    image: ssh-container
+    container_name: pc3
+    networks:
+      my-custom-network:
+        ipv4_address: 172.18.0.4
 networks:
   my-custom-network:
     driver: bridge
