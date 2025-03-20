@@ -2,10 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from src.backend.virtual_pc_backend import VirtualPCManager
 
-import tkinter as tk
-from tkinter import ttk, messagebox
-from src.backend.virtual_pc_backend import VirtualPCManager
-
 class JuniorDashboard(tk.Frame):
     def __init__(self, root, show_login_window):
         super().__init__(root)
@@ -19,8 +15,8 @@ class JuniorDashboard(tk.Frame):
         self.welcome_label = tk.Label(self, text="Welcome, Junior Admin!")
         self.welcome_label.pack(pady=10)
 
-        # Docker container management section
-        self.docker_frame = tk.LabelFrame(self, text="Docker Container Management")
+        # Docker container management section (view-only)
+        self.docker_frame = tk.LabelFrame(self, text="Docker Container Management (View Only)")
         self.docker_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # List of containers
@@ -33,13 +29,6 @@ class JuniorDashboard(tk.Frame):
         # Refresh button
         self.refresh_button = tk.Button(self.docker_frame, text="Refresh", command=self.refresh_containers)
         self.refresh_button.pack(pady=5)
-
-        # Start/stop buttons
-        self.start_button = tk.Button(self.docker_frame, text="Start Container", command=self.start_container)
-        self.start_button.pack(side=tk.LEFT, padx=5, pady=5)
-
-        self.stop_button = tk.Button(self.docker_frame, text="Stop Container", command=self.stop_container)
-        self.stop_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Logout button
         self.logout_button = tk.Button(self, text="Logout", command=self.show_login_window)
@@ -54,35 +43,3 @@ class JuniorDashboard(tk.Frame):
         containers = self.virtual_pc_manager.list_containers()
         for container in containers:
             self.container_tree.insert("", tk.END, values=(container.name, container.status, container.attrs["NetworkSettings"]["IPAddress"]))
-
-    def start_container(self):
-        """Start a selected Docker container and redirect to the dashboard."""
-        selected_item = self.container_tree.selection()
-        if not selected_item:
-            messagebox.showwarning("No Selection", "Please select a container to start.")
-            return
-
-        container_name = self.container_tree.item(selected_item, "values")[0]
-        self.virtual_pc_manager.start_container(container_name)
-        self.refresh_containers()
-
-        # Redirect to the senior dashboard
-        self.show_dashboard()
-
-    def stop_container(self):
-        """Stop a selected Docker container."""
-        selected_item = self.container_tree.selection()
-        if not selected_item:
-            messagebox.showwarning("No Selection", "Please select a container to stop.")
-            return
-
-        container_name = self.container_tree.item(selected_item, "values")[0]
-        self.virtual_pc_manager.stop_container(container_name)
-        self.refresh_containers()
-
-    def show_dashboard(self):
-        """Redirect to the junior dashboard."""
-        for widget in self.root.winfo_children():
-            widget.destroy()
-        self.junior_dashboard = JuniorDashboard(self.root, self.show_login_window)
-        self.junior_dashboard.pack(fill=tk.BOTH, expand=True)

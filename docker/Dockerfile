@@ -6,7 +6,7 @@ RUN apk add --no-cache openssh \
     && echo "root:root" | chpasswd \
     && ssh-keygen -A
 
-# Allow root login with password (for simplicity, not recommended for production)
+# Allow root login with password 
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 # Expose the SSH port
