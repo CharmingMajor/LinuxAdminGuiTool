@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from src.backend.virtual_pc_backend import VirtualPCManager
+from src.gui.pc_connection import ssh_into_container
 
 class SeniorDashboard(tk.Frame):
     def __init__(self, root, show_login_window):
@@ -37,6 +38,10 @@ class SeniorDashboard(tk.Frame):
         self.stop_button = tk.Button(self.docker_frame, text="Stop Container", command=self.stop_container)
         self.stop_button.pack(side=tk.LEFT, padx=5, pady=5)
 
+        # SSH button
+        self.ssh_button = tk.Button(self.docker_frame, text="SSH into Container", command=self.ssh_into_container)
+        self.ssh_button.pack(side=tk.LEFT, padx=5, pady=5)
+
         # Logout button
         self.logout_button = tk.Button(self, text="Logout", command=self.show_login_window)
         self.logout_button.pack(pady=10)
@@ -52,7 +57,7 @@ class SeniorDashboard(tk.Frame):
             self.container_tree.insert("", tk.END, values=(container.name, container.status, container.attrs["NetworkSettings"]["IPAddress"]))
 
     def start_container(self):
-        """Start a selected Docker container and redirect to the dashboard."""
+        """Start a selected Docker container."""
         selected_item = self.container_tree.selection()
         if not selected_item:
             messagebox.showwarning("No Selection", "Please select a container to start.")
@@ -61,9 +66,6 @@ class SeniorDashboard(tk.Frame):
         container_name = self.container_tree.item(selected_item, "values")[0]
         self.virtual_pc_manager.start_container(container_name)
         self.refresh_containers()
-
-        # Redirect to the senior dashboard
-        self.show_dashboard()
 
     def stop_container(self):
         """Stop a selected Docker container."""
@@ -76,9 +78,16 @@ class SeniorDashboard(tk.Frame):
         self.virtual_pc_manager.stop_container(container_name)
         self.refresh_containers()
 
-    def show_dashboard(self):
-        """Redirect to the senior dashboard."""
-        for widget in self.root.winfo_children():
-            widget.destroy()
-        self.senior_dashboard = SeniorDashboard(self.root, self.show_login_window)
-        self.senior_dashboard.pack(fill=tk.BOTH, expand=True)
+    def ssh_into_container(self):
+        """SSH into a selected Docker container."""
+        selected_item = self.container_tree.selection()
+        if not selected_item:
+            messagebox.showwarning("No Selection", "Please select a container to SSH into.")
+            return
+
+        container_ip = self.container_tree.item(selected_item, "values")[2]
+        output, error = ssh_into_container(container_ip, "root", "root", "ls -l")
+        if output:
+            messagebox.showinfo("SSH Output", output)
+        else:
+            messagebox.showerror("SSH Error", error)
