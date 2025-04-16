@@ -1,0 +1,3 @@
+2025-04-14 14:39:30.461885 - Failed login attempt for junior from 127.0.0.1
+2025-04-14 14:39:34.899340 - Failed login attempt for junior from 127.0.0.1
+2025-04-14 14:39:36.673533 - Failed login attempt for junior from 127.0.0.1

@@ -1,0 +1,5 @@
+2025-04-12 03:56:08.261648 - Failed login attempt for ddd from 127.0.0.1
+2025-04-12 03:56:10.743526 - Failed login attempt for ddd from 127.0.0.1
+2025-04-12 03:56:12.427326 - Failed login attempt for ddd from 127.0.0.1
+2025-04-12 18:37:22.045776 - Failed login attempt for senior from 127.0.0.1
+2025-04-16 08:49:35.506603 - Failed login attempt for junior from 127.0.0.1
