@@ -1,0 +1,17 @@
+2025-04-12 17:40:47,883 - docker_manager - INFO - Successfully listed containers
+2025-04-12 17:41:32,622 - docker_manager - INFO - Successfully listed containers
+2025-04-12 17:41:32,842 - docker_manager - INFO - Successfully listed containers
+2025-04-12 17:41:33,014 - docker_manager - INFO - Successfully listed containers
+2025-04-12 18:14:18,022 - docker_manager - INFO - Successfully listed containers
+2025-04-12 19:28:46,630 - docker_manager - INFO - Successfully listed containers
+2025-04-12 19:51:21,501 - docker_manager - INFO - Successfully listed containers
+2025-04-12 19:54:00,877 - docker_manager - INFO - Successfully listed containers
+2025-04-12 19:54:01,055 - docker_manager - INFO - Successfully listed containers
+2025-04-12 19:54:01,218 - docker_manager - INFO - Successfully listed containers
+2025-04-12 19:56:59,926 - docker_manager - INFO - Successfully listed containers
+2025-04-12 20:02:49,037 - docker_manager - INFO - Successfully listed containers
+2025-04-14 14:39:08,950 - docker_manager - INFO - Successfully listed containers
+2025-04-14 14:55:29,984 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:27:11,994 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:27:14,028 - docker_manager - INFO - Started container: sad_hypatia
+2025-04-15 18:27:14,789 - docker_manager - INFO - Successfully listed containers

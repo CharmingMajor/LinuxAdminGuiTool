@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  pc1:
+    build: .
+    container_name: pc1
+    hostname: pc1
+    ports:
+      - "2221:22"
+    networks:
+      admin-network:
+        ipv4_address: 172.18.0.2
+
+  pc2:
+    build: .
+    container_name: pc2
+    hostname: pc2
+    ports:
+      - "2222:22"
+    networks:
+      admin-network:
+        ipv4_address: 172.18.0.3
+
+  pc3:
+    build: .
+    container_name: pc3
+    hostname: pc3
+    ports:
+      - "2223:22"
+    networks:
+      admin-network:
+        ipv4_address: 172.18.0.4
+
+networks:
+  admin-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16

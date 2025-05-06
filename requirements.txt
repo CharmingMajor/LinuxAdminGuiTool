@@ -1,0 +1,7 @@
+# Python dependencies
+docker==6.1.3
+paramiko==3.3.1
+# tkinter is installed from the system package manager (python3-tkinter)
+fabric==3.2.2
+pytest==8.3.5
+pillow==11.2.1
