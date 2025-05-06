@@ -1,0 +1,92 @@
+2025-04-14 17:22:23,721 - __main__ - INFO - Starting application initialization
+2025-04-14 17:22:29,895 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:22:36,691 - docker_manager - INFO - Started container: charming_volhard
+2025-04-14 17:22:38,098 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:27:28,728 - __main__ - INFO - Starting application initialization
+2025-04-14 17:27:36,155 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:27:37,986 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 17:27:38,042 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 17:30:26,007 - __main__ - INFO - Starting application initialization
+2025-04-14 17:30:31,377 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:30:34,022 - docker_manager - INFO - Started container: charming_volhard
+2025-04-14 17:30:34,630 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:30:36,624 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 17:30:36,680 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 17:30:53,057 - docker_manager - INFO - Started container: charming_volhard
+2025-04-14 17:30:55,961 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:30:57,539 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 17:30:57,595 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 17:33:42,462 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:33:50,854 - docker_manager - INFO - Successfully listed containers
+2025-04-14 17:33:52,228 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 17:33:52,284 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 18:20:23,005 - __main__ - INFO - Starting application initialization
+2025-04-14 18:20:29,406 - docker_manager - INFO - Successfully listed containers
+2025-04-14 18:20:31,114 - docker_manager - INFO - Started container: charming_volhard
+2025-04-14 18:20:31,639 - docker_manager - INFO - Successfully listed containers
+2025-04-14 18:20:32,790 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 18:20:32,845 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 18:20:46,356 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 18:20:46,412 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 18:20:55,000 - docker_manager - INFO - Successfully listed containers
+2025-04-14 18:20:56,411 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 18:20:56,466 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 18:20:59,442 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 18:20:59,499 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 18:21:22,355 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 18:21:22,411 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-14 18:25:59,861 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-14 18:25:59,917 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-15 18:38:49,425 - __main__ - INFO - Starting application initialization
+2025-04-15 18:38:57,120 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:38:58,664 - docker_manager - INFO - Started container: sad_hypatia
+2025-04-15 18:38:59,542 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:39:00,899 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-15 18:39:00,954 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-15 18:39:52,840 - __main__ - INFO - Starting application initialization
+2025-04-15 18:39:59,617 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:40:01,689 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:40:04,134 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:40:04,318 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:40:06,944 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-15 18:40:07,002 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-15 18:40:12,515 - __main__ - INFO - Starting application initialization
+2025-04-15 18:40:20,081 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:40:22,730 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-15 18:40:22,786 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-15 18:40:24,949 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-15 18:40:25,004 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-15 18:40:25,374 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-15 18:40:25,431 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-15 18:40:28,220 - docker_manager - INFO - Successfully listed containers
+2025-04-16 07:48:21,440 - __main__ - INFO - Starting application initialization
+2025-04-16 07:48:27,747 - root - ERROR - Failed to load senior dashboard: No module named 'system_admin_dashboard'
+2025-04-16 07:58:46,774 - __main__ - INFO - Starting application initialization
+2025-04-16 07:58:58,850 - root - ERROR - Failed to load senior dashboard: cannot import name 'SeniorDashboard' from partially initialized module 'src.gui.senior_dashboard' (most likely due to a circular import) (/home/tony/LinuxAdminGuiTool-master/LinuxAdminGuiTool-master/src/gui/senior_dashboard.py)
+2025-04-16 08:16:40,478 - __main__ - INFO - Starting application initialization
+2025-04-16 08:16:49,560 - root - ERROR - Failed to load senior dashboard: cannot import name 'SeniorDashboard' from partially initialized module 'src.gui.senior_dashboard' (most likely due to a circular import) (/home/tony/LinuxAdminGuiTool-master/LinuxAdminGuiTool-master/src/gui/senior_dashboard.py)
+2025-04-16 08:18:09,690 - __main__ - INFO - Starting application initialization
+2025-04-16 08:19:16,060 - __main__ - INFO - Initializing application
+2025-04-16 08:19:22,991 - __main__ - ERROR - Failed to load senior dashboard: cannot import name 'SeniorDashboard' from partially initialized module 'src.gui.senior_dashboard' (most likely due to a circular import) (/home/tony/LinuxAdminGuiTool-master/LinuxAdminGuiTool-master/src/gui/senior_dashboard.py)
+2025-04-16 08:33:28,121 - __main__ - INFO - Initializing application
+2025-04-16 08:33:34,571 - __main__ - ERROR - Failed to load senior dashboard: cannot import name 'SeniorDashboard' from partially initialized module 'src.gui.senior_dashboard' (most likely due to a circular import) (/home/tony/LinuxAdminGuiTool-master/LinuxAdminGuiTool-master/src/gui/senior_dashboard.py)
+2025-04-16 08:37:13,765 - __main__ - INFO - Initializing application
+2025-04-16 08:37:41,727 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-16 08:37:41,783 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-16 08:38:52,402 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-16 08:38:52,457 - paramiko.transport - INFO - Authentication (password) failed.
+2025-04-16 08:41:55,334 - __main__ - INFO - Initializing application
+2025-04-16 08:42:19,971 - __main__ - INFO - Initializing application
+2025-04-16 08:49:27,843 - __main__ - INFO - Application shutdown by user
+2025-04-16 08:49:27,899 - __main__ - INFO - Initializing application
+2025-04-16 08:51:33,459 - __main__ - INFO - Initializing application
+2025-04-16 08:51:43,429 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-16 08:51:43,486 - paramiko.transport - INFO - Authentication (password) successful!
+2025-04-16 09:25:18,230 - __main__ - INFO - Initializing application
+2025-04-16 09:26:40,506 - __main__ - INFO - Initializing application
+2025-04-16 09:26:55,900 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-16 09:26:55,954 - paramiko.transport - INFO - Authentication (password) failed.
+2025-04-16 09:27:07,335 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-16 09:27:07,389 - paramiko.transport - INFO - Authentication (password) failed.
+2025-04-16 09:27:10,970 - paramiko.transport - INFO - Connected (version 2.0, client OpenSSH_9.9)
+2025-04-16 09:27:11,026 - paramiko.transport - INFO - Authentication (password) successful!

@@ -1,0 +1,5 @@
+2025-04-15 18:24:52,258 - __main__ - INFO - Starting application initialization
+2025-04-15 18:27:06,230 - __main__ - INFO - Starting application initialization
+2025-04-15 18:27:11,994 - docker_manager - INFO - Successfully listed containers
+2025-04-15 18:27:14,028 - docker_manager - INFO - Started container: sad_hypatia
+2025-04-15 18:27:14,789 - docker_manager - INFO - Successfully listed containers
