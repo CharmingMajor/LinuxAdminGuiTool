@@ -1,4 +1,4 @@
-# Linux Admin GUI Tool (Work in progress)
+# Linux Admin GUI Tool (Work in progress!)
 
 A modern graphical user interface for Linux system administration, designed to simplify remote system management with a clean, professional dashboard UI.
 
