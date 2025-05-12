@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont, QIcon, QColor
 import json
 import time
+from src.ui.utils.theme_manager import ThemeManager
 
 class UserManagerWidget(QWidget):
     """Widget for managing system users and groups"""
@@ -16,30 +17,36 @@ class UserManagerWidget(QWidget):
         super().__init__(parent)
         self.is_senior = is_senior
         self.remote = remote
+        self.theme_manager = ThemeManager()
+        self.theme_manager.theme_changed.connect(self.apply_theme)
         self.setup_ui()
         
     def setup_ui(self):
         """Set up the UI components"""
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(30)  # Increased spacing between sections
-        main_layout.setContentsMargins(20, 20, 20, 20)  # Added margins
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Apply current theme
+        theme = self.theme_manager.get_theme_styles()
         
         # Page title
         title_label = QLabel("USER MANAGEMENT")
-        title_label.setStyleSheet("font-size: 20px; font-weight: bold; color: white; margin-bottom: 15px;")
+        title_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {theme['text_primary']}; margin-bottom: 10px;")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
         
         # Status message area for feedback
         self.status_label = QLabel()
-        self.status_label.setStyleSheet("""
-            background-color: #f8f9fa; 
-            border-radius: 8px; 
-            padding: 12px; 
+        self.status_label.setStyleSheet(f"""
+            background-color: {theme['bg_tertiary']}; 
+            border-radius: 6px; 
+            padding: 8px; 
             margin: 5px; 
             min-height: 24px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
+            color: {theme['text_primary']};
         """)
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setWordWrap(True)
@@ -53,31 +60,30 @@ class UserManagerWidget(QWidget):
         # ==================== USER MANAGEMENT SECTION ====================
         # Create a widget for the user form
         user_form = QFrame()
-        user_form.setFrameShape(QFrame.Shape.Box)
-        user_form.setLineWidth(2)
-        user_form.setStyleSheet("""
-            QFrame {
-                background-color: #2a2a2a; 
-                border: 2px solid #555; 
-                border-radius: 10px;
-            }
+        user_form.setFrameShape(QFrame.Shape.StyledPanel)
+        user_form.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['bg_secondary']}; 
+                border: 1px solid {theme['border_color']}; 
+                border-radius: 8px;
+            }}
         """)
         user_form.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         
         user_form_layout = QVBoxLayout(user_form)
-        user_form_layout.setContentsMargins(20, 20, 20, 20)
-        user_form_layout.setSpacing(20)
+        user_form_layout.setContentsMargins(15, 15, 15, 15)
+        user_form_layout.setSpacing(15)
         
         # User form header with icon
         header_widget = QWidget()
         header_layout = QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 10)
+        header_layout.setContentsMargins(0, 0, 0, 5)
         
         header_label = QLabel("CREATE NEW USER")
-        header_label.setStyleSheet("""
-            font-size: 16px; 
+        header_label.setStyleSheet(f"""
+            font-size: 14px; 
             font-weight: bold; 
-            color: #0078d4; 
+            color: {theme['accent_primary']}; 
             padding-bottom: 5px;
         """)
         header_layout.addWidget(header_label)
@@ -86,7 +92,7 @@ class UserManagerWidget(QWidget):
         header_line = QFrame()
         header_line.setFrameShape(QFrame.Shape.HLine)
         header_line.setFrameShadow(QFrame.Shadow.Sunken)
-        header_line.setStyleSheet("background-color: #444;")
+        header_line.setStyleSheet(f"background-color: {theme['border_color']};")
         
         user_form_layout.addWidget(header_widget)
         user_form_layout.addWidget(header_line)
@@ -94,60 +100,60 @@ class UserManagerWidget(QWidget):
         # Form fields
         form_widget = QWidget()
         form_grid = QGridLayout(form_widget)
-        form_grid.setVerticalSpacing(15)
-        form_grid.setHorizontalSpacing(15)
-        form_grid.setContentsMargins(10, 10, 10, 10)
+        form_grid.setVerticalSpacing(10)
+        form_grid.setHorizontalSpacing(10)
+        form_grid.setContentsMargins(5, 5, 5, 5)
         
         # Username
         username_label = QLabel("Username:")
-        username_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        username_label.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme['text_primary']};")
         username_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.username_input = QLineEdit()
-        self.username_input.setMinimumHeight(40)
+        self.username_input.setMinimumHeight(30)
         self.username_input.setPlaceholderText("Enter username")
-        self.username_input.setStyleSheet("""
-            padding: 8px; 
-            background-color: #333; 
-            color: white; 
-            border: 1px solid #555;
-            border-radius: 5px;
-            font-size: 14px;
+        self.username_input.setStyleSheet(f"""
+            padding: 5px; 
+            background-color: {theme['input_bg']}; 
+            color: {theme['text_primary']}; 
+            border: 1px solid {theme['border_color']};
+            border-radius: 4px;
+            font-size: 13px;
         """)
         form_grid.addWidget(username_label, 0, 0)
         form_grid.addWidget(self.username_input, 0, 1)
         
         # Password
         password_label = QLabel("Password:")
-        password_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        password_label.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme['text_primary']};")
         password_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.password_input = QLineEdit()
-        self.password_input.setMinimumHeight(40)
+        self.password_input.setMinimumHeight(30)
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setPlaceholderText("Enter password")
-        self.password_input.setStyleSheet("""
-            padding: 8px; 
-            background-color: #333; 
-            color: white; 
-            border: 1px solid #555;
-            border-radius: 5px;
-            font-size: 14px;
+        self.password_input.setStyleSheet(f"""
+            padding: 5px; 
+            background-color: {theme['input_bg']}; 
+            color: {theme['text_primary']}; 
+            border: 1px solid {theme['border_color']};
+            border-radius: 4px;
+            font-size: 13px;
         """)
         form_grid.addWidget(password_label, 1, 0)
         form_grid.addWidget(self.password_input, 1, 1)
         
         # Group
         group_label = QLabel("Primary Group:")
-        group_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        group_label.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme['text_primary']};")
         group_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.group_combo = QComboBox()
-        self.group_combo.setMinimumHeight(40)
-        self.group_combo.setStyleSheet("""
-            padding: 8px; 
-            background-color: #333; 
-            color: white; 
-            border: 1px solid #555;
-            border-radius: 5px;
-            font-size: 14px;
+        self.group_combo.setMinimumHeight(30)
+        self.group_combo.setStyleSheet(f"""
+            padding: 5px; 
+            background-color: {theme['input_bg']}; 
+            color: {theme['text_primary']}; 
+            border: 1px solid {theme['border_color']};
+            border-radius: 4px;
+            font-size: 13px;
         """)
         self.update_group_list()
         form_grid.addWidget(group_label, 2, 0)
@@ -157,11 +163,11 @@ class UserManagerWidget(QWidget):
         row = 3
         if self.is_senior:
             sudo_label = QLabel("Sudo Access:")
-            sudo_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+            sudo_label.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme['text_primary']};")
             sudo_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.sudo_check = QCheckBox("Grant sudo privileges")
-            self.sudo_check.setStyleSheet("color: white; font-size: 14px;")
-            self.sudo_check.setMinimumHeight(40)
+            self.sudo_check.setStyleSheet(f"color: {theme['text_primary']}; font-size: 13px;")
+            self.sudo_check.setMinimumHeight(30)
             form_grid.addWidget(sudo_label, row, 0)
             form_grid.addWidget(self.sudo_check, row, 1)
             row += 1
@@ -172,30 +178,30 @@ class UserManagerWidget(QWidget):
         button_widget = QWidget()
         button_layout = QHBoxLayout(button_widget)
         button_layout.setContentsMargins(0, 10, 0, 0)
-        button_layout.setSpacing(15)
+        button_layout.setSpacing(10)
         
         create_user_btn = QPushButton("Create User")
-        create_user_btn.setMinimumHeight(45)
-        create_user_btn.setMinimumWidth(150)
-        create_user_btn.setStyleSheet("""
-            background-color: #0078d4; 
+        create_user_btn.setMinimumHeight(35)
+        create_user_btn.setMinimumWidth(120)
+        create_user_btn.setStyleSheet(f"""
+            background-color: {theme['accent_primary']}; 
             color: white; 
             font-weight: bold; 
-            border-radius: 6px;
-            font-size: 14px;
+            border-radius: 4px;
+            font-size: 13px;
         """)
         create_user_btn.clicked.connect(self.create_user)
         
         if self.is_senior:
             delete_user_btn = QPushButton("Delete User")
-            delete_user_btn.setMinimumHeight(45)
-            delete_user_btn.setMinimumWidth(150)
-            delete_user_btn.setStyleSheet("""
-                background-color: #dc3545; 
+            delete_user_btn.setMinimumHeight(35)
+            delete_user_btn.setMinimumWidth(120)
+            delete_user_btn.setStyleSheet(f"""
+                background-color: {theme['error_color']}; 
                 color: white; 
                 font-weight: bold; 
-                border-radius: 6px;
-                font-size: 14px;
+                border-radius: 4px;
+                font-size: 13px;
             """)
             delete_user_btn.clicked.connect(self.delete_user)
             button_layout.addWidget(delete_user_btn)
@@ -206,31 +212,30 @@ class UserManagerWidget(QWidget):
         # ==================== USER LIST SECTION ====================
         # User Table
         user_list = QFrame()
-        user_list.setFrameShape(QFrame.Shape.Box)
-        user_list.setLineWidth(2)
-        user_list.setStyleSheet("""
-            QFrame {
-                background-color: #2a2a2a; 
-                border: 2px solid #555; 
-                border-radius: 10px;
-            }
+        user_list.setFrameShape(QFrame.Shape.StyledPanel)
+        user_list.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['bg_secondary']}; 
+                border: 1px solid {theme['border_color']}; 
+                border-radius: 8px;
+            }}
         """)
         user_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         
         user_list_layout = QVBoxLayout(user_list)
-        user_list_layout.setContentsMargins(20, 20, 20, 20)
-        user_list_layout.setSpacing(15)
+        user_list_layout.setContentsMargins(15, 15, 15, 15)
+        user_list_layout.setSpacing(10)
         
         # Table header with icon
         table_header_widget = QWidget()
         table_header_layout = QHBoxLayout(table_header_widget)
-        table_header_layout.setContentsMargins(0, 0, 0, 10)
+        table_header_layout.setContentsMargins(0, 0, 0, 5)
         
         table_header = QLabel("CURRENT USER ACCOUNTS")
-        table_header.setStyleSheet("""
-            font-size: 16px; 
+        table_header.setStyleSheet(f"""
+            font-size: 14px; 
             font-weight: bold; 
-            color: #0078d4; 
+            color: {theme['accent_primary']}; 
             padding-bottom: 5px;
         """)
         table_header_layout.addWidget(table_header)
@@ -239,7 +244,7 @@ class UserManagerWidget(QWidget):
         table_header_line = QFrame()
         table_header_line.setFrameShape(QFrame.Shape.HLine)
         table_header_line.setFrameShadow(QFrame.Shadow.Sunken)
-        table_header_line.setStyleSheet("background-color: #444;")
+        table_header_line.setStyleSheet(f"background-color: {theme['border_color']};")
         
         user_list_layout.addWidget(table_header_widget)
         user_list_layout.addWidget(table_header_line)
@@ -250,270 +255,319 @@ class UserManagerWidget(QWidget):
         if self.is_senior:
             headers.append("Sudo")
         self.user_table.setHorizontalHeaderLabels(headers)
-        self.user_table.horizontalHeader().setStretchLastSection(True)
-        self.user_table.setAlternatingRowColors(True)
-        self.user_table.verticalHeader().setVisible(False)
-        self.user_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.user_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        self.user_table.setMinimumHeight(250)  # Increased height
-        self.user_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #333;
-                color: white;
-                gridline-color: #555;
-                border: none;
-                font-size: 13px;
-            }
-            QTableWidget::item {
-                border-bottom: 1px solid #444;
-                padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #0078d4;
-                color: white;
-            }
-            QHeaderView::section {
-                background-color: #2c2c2c;
-                color: white;
-                padding: 8px;
-                border: 1px solid #444;
+        self.user_table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {theme['bg_secondary']};
+                color: {theme['text_primary']};
+                gridline-color: {theme['border_color']};
+                border: 1px solid {theme['border_color']};
+                border-radius: 4px;
+            }}
+            QTableWidget::item {{
+                padding: 4px;
+                border-bottom: 1px solid {theme['border_color']};
+            }}
+            QHeaderView::section {{
+                background-color: {theme['table_header_bg']};
+                color: {theme['text_primary']};
+                padding: 5px;
+                border: 1px solid {theme['border_color']};
                 font-weight: bold;
-                font-size: 14px;
-            }
+                font-size: 12px;
+            }}
         """)
-        
-        # Set column widths
-        self.user_table.setColumnWidth(0, 150)  # Username
-        self.user_table.setColumnWidth(1, 80)   # UID
-        self.user_table.setColumnWidth(2, 150)  # Primary Group
-        self.user_table.setColumnWidth(3, 300)  # Home Directory
-        
-        # Add refresh button
-        refresh_btn = QPushButton("Refresh User List")
-        refresh_btn.setMinimumHeight(40)
-        refresh_btn.setStyleSheet("""
-            background-color: #444; 
-            color: white; 
-            padding: 8px; 
-            margin-top: 10px; 
-            border-radius: 6px;
-            font-size: 14px;
-        """)
-        refresh_btn.clicked.connect(self.update_user_list)
-        
         user_list_layout.addWidget(self.user_table)
+        
+        refresh_btn = QPushButton("Refresh User List")
+        refresh_btn.setStyleSheet(f"""
+            background-color: {theme['accent_primary']}; 
+            color: white; 
+            font-weight: bold; 
+            border-radius: 4px;
+            font-size: 13px;
+            padding: 8px;
+        """)
+        refresh_btn.clicked.connect(self.refresh_data)
         user_list_layout.addWidget(refresh_btn)
         
-        # Add user management widgets to the splitter
+        # Add widgets to the top splitter
         top_splitter.addWidget(user_form)
         top_splitter.addWidget(user_list)
-        
-        # Set the initial sizes for the splitter
-        top_splitter.setSizes([400, 800])
+        top_splitter.setSizes([350, 650])  # Default sizing
         
         main_layout.addWidget(top_splitter)
         
-        if self.is_senior:
-            # ==================== GROUP MANAGEMENT SECTION ====================
-            group_section = QFrame()
-            group_section.setFrameShape(QFrame.Shape.Box)
-            group_section.setLineWidth(2)
-            group_section.setStyleSheet("""
-                QFrame {
-                    background-color: #2a2a2a; 
-                    border: 2px solid #555; 
-                    border-radius: 10px;
-                }
-            """)
-            
-            # Create a horizontal layout for the group section
-            group_horizontal_layout = QHBoxLayout()
-            group_horizontal_layout.setSpacing(20)
-            
-            # Group section
-            group_layout = QVBoxLayout(group_section)
-            group_layout.setContentsMargins(20, 20, 20, 20)
-            group_layout.setSpacing(15)
-            
-            # Section header
-            group_section_header = QLabel("GROUP MANAGEMENT")
-            group_section_header.setStyleSheet("""
-                font-size: 16px; 
-                font-weight: bold; 
-                color: #0078d4; 
-                padding-bottom: 5px;
-            """)
-            group_section_header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            
-            # Add a horizontal line
-            group_section_line = QFrame()
-            group_section_line.setFrameShape(QFrame.Shape.HLine)
-            group_section_line.setFrameShadow(QFrame.Shadow.Sunken)
-            group_section_line.setStyleSheet("background-color: #444;")
-            
-            group_layout.addWidget(group_section_header)
-            group_layout.addWidget(group_section_line)
-            
-            # Split the group section into two parts
-            group_splitter = QSplitter(Qt.Orientation.Horizontal)
-            group_splitter.setChildrenCollapsible(False)
-            
-            # Group creation form
-            group_form_widget = QFrame()
-            group_form_widget.setFrameShape(QFrame.Shape.StyledPanel)
-            group_form_widget.setStyleSheet("""
-                QFrame {
-                    background-color: #2d2d2d; 
-                    border: 1px solid #444; 
-                    border-radius: 8px;
-                }
-            """)
-            group_form_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
-            
-            group_form_layout = QVBoxLayout(group_form_widget)
-            group_form_layout.setContentsMargins(15, 15, 15, 15)
-            group_form_layout.setSpacing(15)
-            
-            group_header = QLabel("Create New Group")
-            group_header.setStyleSheet("""
-                font-size: 15px; 
-                font-weight: bold; 
-                color: white; 
-                padding-bottom: 5px;
-            """)
-            group_form_layout.addWidget(group_header)
-            
-            # Group form fields
-            group_form_fields = QWidget()
-            group_fields_layout = QFormLayout(group_form_fields)
-            group_fields_layout.setVerticalSpacing(15)
-            group_fields_layout.setContentsMargins(5, 5, 5, 5)
-            
-            group_name_label = QLabel("Group Name:")
-            group_name_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
-            
-            self.group_name_input = QLineEdit()
-            self.group_name_input.setMinimumHeight(40)
-            self.group_name_input.setPlaceholderText("Enter group name")
-            self.group_name_input.setStyleSheet("""
-                padding: 8px; 
-                background-color: #333; 
-                color: white; 
-                border: 1px solid #555;
-                border-radius: 5px;
-                font-size: 14px;
-            """)
-            
-            group_fields_layout.addRow(group_name_label, self.group_name_input)
-            group_form_layout.addWidget(group_form_fields)
-            
-            create_group_btn = QPushButton("Create Group")
-            create_group_btn.setMinimumHeight(40)
-            create_group_btn.setMinimumWidth(150)
-            create_group_btn.setStyleSheet("""
-                background-color: #0078d4; 
-                color: white; 
-                font-weight: bold; 
-                border-radius: 6px;
-                font-size: 14px;
-            """)
-            create_group_btn.clicked.connect(self.create_group)
-            
-            group_form_layout.addWidget(create_group_btn, 0, Qt.AlignmentFlag.AlignCenter)
-            group_form_layout.addStretch()
-            
-            # Group list
-            group_list_widget = QFrame()
-            group_list_widget.setFrameShape(QFrame.Shape.StyledPanel)
-            group_list_widget.setStyleSheet("""
-                QFrame {
-                    background-color: #2d2d2d; 
-                    border: 1px solid #444; 
-                    border-radius: 8px;
-                }
-            """)
-            group_list_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-            
-            group_list_layout = QVBoxLayout(group_list_widget)
-            group_list_layout.setContentsMargins(15, 15, 15, 15)
-            group_list_layout.setSpacing(15)
-            
-            group_table_header = QLabel("Current Groups")
-            group_table_header.setStyleSheet("""
-                font-size: 15px; 
-                font-weight: bold; 
-                color: white; 
-                padding-bottom: 5px;
-            """)
-            group_list_layout.addWidget(group_table_header)
-            
-            self.group_table = QTableWidget()
-            self.group_table.setColumnCount(3)
-            self.group_table.setHorizontalHeaderLabels(["Group Name", "GID", "Members"])
-            self.group_table.horizontalHeader().setStretchLastSection(True)
-            self.group_table.setAlternatingRowColors(True)
-            self.group_table.verticalHeader().setVisible(False)
-            self.group_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-            self.group_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-            self.group_table.setMinimumHeight(250)  # Increased height
-            self.group_table.setStyleSheet("""
-                QTableWidget {
-                    background-color: #333;
-                    color: white;
-                    gridline-color: #555;
-                    border: none;
-                    font-size: 13px;
-                }
-                QTableWidget::item {
-                    border-bottom: 1px solid #444;
-                    padding: 8px;
-                }
-                QTableWidget::item:selected {
-                    background-color: #0078d4;
-                    color: white;
-                }
-                QHeaderView::section {
-                    background-color: #2c2c2c;
-                    color: white;
-                    padding: 8px;
-                    border: 1px solid #444;
-                    font-weight: bold;
-                    font-size: 14px;
-                }
-            """)
-            
-            # Set column widths
-            self.group_table.setColumnWidth(0, 150)  # Group Name
-            self.group_table.setColumnWidth(1, 80)   # GID
-            
-            # Add refresh button
-            refresh_group_btn = QPushButton("Refresh Group List")
-            refresh_group_btn.setMinimumHeight(40)
-            refresh_group_btn.setStyleSheet("""
-                background-color: #444; 
-                color: white; 
-                padding: 8px; 
-                margin-top: 10px; 
-                border-radius: 6px;
-                font-size: 14px;
-            """)
-            refresh_group_btn.clicked.connect(self.update_group_table)
-            
-            group_list_layout.addWidget(self.group_table)
-            group_list_layout.addWidget(refresh_group_btn)
-            
-            # Add widgets to the splitter
-            group_splitter.addWidget(group_form_widget)
-            group_splitter.addWidget(group_list_widget)
-            
-            # Set initial sizes for the splitter
-            group_splitter.setSizes([400, 800])
-            
-            group_layout.addWidget(group_splitter)
-            main_layout.addWidget(group_section)
-            
-        # Initial data load
+        # GROUP MANAGEMENT SECTION
+        group_label = QLabel("GROUP MANAGEMENT")
+        group_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {theme['text_primary']}; margin-top: 15px; margin-bottom: 10px;")
+        group_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(group_label)
+        
+        # Create bottom splitter
+        bottom_splitter = QSplitter(Qt.Orientation.Horizontal)
+        bottom_splitter.setChildrenCollapsible(False)
+        
+        # Group creation form
+        group_form = QFrame()
+        group_form.setFrameShape(QFrame.Shape.StyledPanel)
+        group_form.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['bg_secondary']}; 
+                border: 1px solid {theme['border_color']}; 
+                border-radius: 8px;
+            }}
+        """)
+        
+        group_form_layout = QVBoxLayout(group_form)
+        group_form_layout.setContentsMargins(15, 15, 15, 15)
+        group_form_layout.setSpacing(15)
+        
+        # Group form header
+        group_header = QLabel("Create New Group")
+        group_header.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: bold; 
+            color: {theme['accent_primary']}; 
+            padding-bottom: 5px;
+        """)
+        
+        # Add a horizontal line
+        group_header_line = QFrame()
+        group_header_line.setFrameShape(QFrame.Shape.HLine)
+        group_header_line.setFrameShadow(QFrame.Shadow.Sunken)
+        group_header_line.setStyleSheet(f"background-color: {theme['border_color']};")
+        
+        group_form_layout.addWidget(group_header)
+        group_form_layout.addWidget(group_header_line)
+        
+        # Group name field
+        group_name_layout = QHBoxLayout()
+        group_name_label = QLabel("Group Name:")
+        group_name_label.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme['text_primary']};")
+        
+        self.group_name_input = QLineEdit()
+        self.group_name_input.setMinimumHeight(30)
+        self.group_name_input.setPlaceholderText("Enter group name")
+        self.group_name_input.setStyleSheet(f"""
+            padding: 5px; 
+            background-color: {theme['input_bg']}; 
+            color: {theme['text_primary']}; 
+            border: 1px solid {theme['border_color']};
+            border-radius: 4px;
+            font-size: 13px;
+        """)
+        
+        group_name_layout.addWidget(group_name_label)
+        group_name_layout.addWidget(self.group_name_input)
+        group_form_layout.addLayout(group_name_layout)
+        
+        # Create group button
+        create_group_btn = QPushButton("Create Group")
+        create_group_btn.setStyleSheet(f"""
+            background-color: {theme['accent_primary']}; 
+            color: white; 
+            font-weight: bold; 
+            border-radius: 4px;
+            font-size: 13px;
+            padding: 8px;
+            margin-top: 10px;
+        """)
+        create_group_btn.clicked.connect(self.create_group)
+        group_form_layout.addWidget(create_group_btn, 0, Qt.AlignmentFlag.AlignCenter)
+        
+        # Group list
+        group_list = QFrame()
+        group_list.setFrameShape(QFrame.Shape.StyledPanel)
+        group_list.setStyleSheet(f"""
+            QFrame {{
+                background-color: {theme['bg_secondary']}; 
+                border: 1px solid {theme['border_color']}; 
+                border-radius: 8px;
+            }}
+        """)
+        
+        group_list_layout = QVBoxLayout(group_list)
+        group_list_layout.setContentsMargins(15, 15, 15, 15)
+        group_list_layout.setSpacing(10)
+        
+        # Groups header
+        groups_header = QLabel("Current Groups")
+        groups_header.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: bold; 
+            color: {theme['accent_primary']}; 
+            padding-bottom: 5px;
+        """)
+        
+        # Add a horizontal line
+        groups_header_line = QFrame()
+        groups_header_line.setFrameShape(QFrame.Shape.HLine)
+        groups_header_line.setFrameShadow(QFrame.Shadow.Sunken)
+        groups_header_line.setStyleSheet(f"background-color: {theme['border_color']};")
+        
+        group_list_layout.addWidget(groups_header)
+        group_list_layout.addWidget(groups_header_line)
+        
+        # Group table
+        self.group_table = QTableWidget()
+        self.group_table.setColumnCount(3)
+        self.group_table.setHorizontalHeaderLabels(["Group Name", "GID", "Members"])
+        self.group_table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {theme['bg_secondary']};
+                color: {theme['text_primary']};
+                gridline-color: {theme['border_color']};
+                border: 1px solid {theme['border_color']};
+                border-radius: 4px;
+            }}
+            QTableWidget::item {{
+                padding: 4px;
+                border-bottom: 1px solid {theme['border_color']};
+            }}
+            QHeaderView::section {{
+                background-color: {theme['table_header_bg']};
+                color: {theme['text_primary']};
+                padding: 5px;
+                border: 1px solid {theme['border_color']};
+                font-weight: bold;
+                font-size: 12px;
+            }}
+        """)
+        group_list_layout.addWidget(self.group_table)
+        
+        # Add widgets to the bottom splitter
+        bottom_splitter.addWidget(group_form)
+        bottom_splitter.addWidget(group_list)
+        bottom_splitter.setSizes([350, 650])  # Default sizing
+        
+        main_layout.addWidget(bottom_splitter)
+        
+        # Load initial data
         self.refresh_data()
+     
+    def apply_theme(self):
+        """Apply the current theme to the widget"""
+        theme = self.theme_manager.get_theme_styles()
+        
+        # Update title label
+        if hasattr(self, 'status_label'):
+            self.status_label.setStyleSheet(f"""
+                background-color: {theme['bg_tertiary']}; 
+                border-radius: 6px; 
+                padding: 8px; 
+                margin: 5px; 
+                min-height: 24px;
+                font-size: 13px;
+                font-weight: bold;
+                color: {theme['text_primary']};
+            """)
+        
+        # Update frames and panels
+        for widget in self.findChildren(QFrame):
+            widget.setStyleSheet(f"""
+                background-color: {theme['bg_secondary']}; 
+                border: 1px solid {theme['border_color']}; 
+                border-radius: 8px;
+            """)
+        
+        # Update all QLineEdit widgets
+        for widget in self.findChildren(QLineEdit):
+            widget.setStyleSheet(f"""
+                padding: 5px; 
+                background-color: {theme['input_bg']}; 
+                color: {theme['text_primary']}; 
+                border: 1px solid {theme['border_color']};
+                border-radius: 4px;
+                font-size: 13px;
+            """)
+        
+        # Update all QComboBox widgets
+        for widget in self.findChildren(QComboBox):
+            widget.setStyleSheet(f"""
+                padding: 5px; 
+                background-color: {theme['input_bg']}; 
+                color: {theme['text_primary']}; 
+                border: 1px solid {theme['border_color']};
+                border-radius: 4px;
+                font-size: 13px;
+            """)
+        
+        # Update all QCheckBox widgets
+        for widget in self.findChildren(QCheckBox):
+            widget.setStyleSheet(f"color: {theme['text_primary']}; font-size: 13px;")
+        
+        # Update all label headers
+        for label in self.findChildren(QLabel):
+            if "header" in label.objectName():
+                label.setStyleSheet(f"""
+                    font-size: 14px; 
+                    font-weight: bold; 
+                    color: {theme['accent_primary']}; 
+                    padding-bottom: 5px;
+                """)
+            elif "title" in label.objectName():
+                label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {theme['text_primary']}; margin-bottom: 10px;")
+            else:
+                label.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme['text_primary']};")
+        
+        # Update all horizontal lines
+        for line in self.findChildren(QFrame):
+            if line.frameShape() == QFrame.Shape.HLine:
+                line.setStyleSheet(f"background-color: {theme['border_color']};")
+        
+        # Update tables
+        for table in self.findChildren(QTableWidget):
+            table.setStyleSheet(f"""
+                QTableWidget {{
+                    border: 1px solid {theme['border_color']};
+                    background-color: {theme['bg_secondary']};
+                    color: {theme['text_primary']};
+                    gridline-color: {theme['border_color']};
+                    font-size: 13px;
+                }}
+                QTableWidget::item {{
+                    padding: 5px;
+                    border-bottom: 1px solid {theme['border_color']};
+                }}
+                QHeaderView::section {{
+                    background-color: {theme['table_header_bg']};
+                    color: {theme['text_primary']};
+                    padding: 5px;
+                    border: 1px solid {theme['border_color']};
+                }}
+            """)
+        
+        # Update buttons based on their purpose
+        for btn in self.findChildren(QPushButton):
+            if "create" in btn.text().lower():
+                btn.setStyleSheet(f"""
+                    background-color: {theme['accent_primary']}; 
+                    color: white; 
+                    font-weight: bold; 
+                    border-radius: 4px;
+                    font-size: 13px;
+                    min-height: 35px;
+                """)
+            elif "delete" in btn.text().lower():
+                btn.setStyleSheet(f"""
+                    background-color: {theme['error_color']}; 
+                    color: white; 
+                    font-weight: bold; 
+                    border-radius: 4px;
+                    font-size: 13px;
+                    min-height: 35px;
+                """)
+            else:
+                btn.setStyleSheet(f"""
+                    background-color: {theme['bg_tertiary']}; 
+                    color: {theme['text_primary']}; 
+                    border-radius: 4px;
+                    font-size: 13px;
+                    min-height: 35px;
+                """)
+        
+        # Update the global widget background
+        self.setStyleSheet(f"QWidget {{ background-color: {theme['bg_primary']}; }}")
         
     def refresh_data(self):
         """Refresh all displayed data"""

@@ -9,6 +9,7 @@ from pathlib import Path
 import json
 import os
 import datetime
+from src.ui.utils.theme_manager import ThemeManager
 
 class BackupConfigDialog(QDialog):
     """Dialog for configuring backup settings"""
@@ -16,11 +17,15 @@ class BackupConfigDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Backup Configuration")
+        self.theme_manager = ThemeManager()
         self.setup_ui()
         
     def setup_ui(self):
         """Set up the UI components"""
         layout = QFormLayout(self)
+        
+        # Apply theme styles
+        self.theme_manager.apply_widget_styles(self)
         
         # Source path
         self.source_input = QLineEdit()
@@ -73,12 +78,17 @@ class BackupManagerWidget(QWidget):
     def __init__(self, parent=None, remote=None):
         super().__init__(parent)
         self.remote = remote
+        self.theme_manager = ThemeManager()
+        self.theme_manager.theme_changed.connect(self.apply_theme)
         self.setup_ui()
         self.load_backups()
         
     def setup_ui(self):
         """Set up the UI components"""
         layout = QVBoxLayout(self)
+        
+        # Apply theme styles
+        self.theme_manager.apply_widget_styles(self)
         
         # Backup list
         backups_group = QGroupBox("Backup History")
@@ -127,6 +137,10 @@ class BackupManagerWidget(QWidget):
         output_layout.addWidget(self.output_text)
         
         layout.addWidget(output_group)
+        
+    def apply_theme(self):
+        """Apply current theme to the widget"""
+        self.theme_manager.apply_widget_styles(self)
         
     def load_backups(self):
         """Load backup history"""

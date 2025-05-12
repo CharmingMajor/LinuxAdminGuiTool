@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QProgressBar, QTableWidget, QTableWidgetItem, QGroupBox, QComboBox)
+    QProgressBar, QTableWidget, QTableWidgetItem, QGroupBox, QComboBox, QFrame, QSizePolicy)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont, QIcon
 import psutil
@@ -8,6 +8,48 @@ from datetime import datetime
 import pyqtgraph as pg
 from collections import deque
 from src.utils.remote_connection import RemoteConnection
+from src.ui.utils.theme_manager import ThemeManager
+
+class CardWidget(QFrame):
+    """A card-like widget with title and content for consistent UI"""
+    
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setObjectName("card-widget")
+        
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(15, 15, 15, 15)
+        self.layout.setSpacing(10)
+        
+        # Title with bottom border
+        title_container = QWidget()
+        title_container.setObjectName("card-title-container")
+        title_container.setMaximumHeight(30)
+        title_layout = QHBoxLayout(title_container)
+        title_layout.setContentsMargins(0, 0, 0, 8)
+        
+        self.title_label = QLabel(title)
+        self.title_label.setObjectName("card-title")
+        title_layout.addWidget(self.title_label)
+        
+        self.layout.addWidget(title_container)
+        
+        # Content container
+        self.content = QWidget()
+        self.content_layout = QVBoxLayout(self.content)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(10)
+        
+        self.layout.addWidget(self.content)
+        
+    def add_widget(self, widget):
+        """Add a widget to the card content"""
+        self.content_layout.addWidget(widget)
+        
+    def add_layout(self, layout):
+        """Add a layout to the card content"""
+        self.content_layout.addLayout(layout)
 
 class SystemMonitorWidget(QWidget):
     """Widget for monitoring system resources and processes"""
@@ -16,34 +58,82 @@ class SystemMonitorWidget(QWidget):
         super().__init__(parent)
         self.advanced = advanced
         self.remote = remote
+        # Get theme manager instance
+        self.theme_manager = ThemeManager()
+        self.theme_manager.theme_changed.connect(self.update_theme)
+        
         self.setup_ui()
         self.setup_graphs()
         self.setup_timer()
         
     def setup_ui(self):
         """Set up the UI components"""
-        layout = QVBoxLayout(self)
+        # Get current theme
+        theme = self.theme_manager.get_theme_styles()
         
-        # Resource usage section
-        resources_group = QGroupBox("System Resources")
-        resources_layout = QVBoxLayout(resources_group)
+        # Main layout with responsive design
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(20)
         
-        # CPU Usage
-        cpu_group = QGroupBox("CPU Usage")
-        cpu_layout = QVBoxLayout(cpu_group)
+        # Top row with system info and CPU usage
+        top_row = QHBoxLayout()
+        top_row.setSpacing(20)
         
+        # System Info Card
+        system_info_card = CardWidget("System Information")
+        system_info_layout = QVBoxLayout()
+        system_info_layout.setSpacing(8)
+        
+        # System info labels with consistent styling
+        self.hostname_label = QLabel()
+        self.hostname_label.setObjectName("info-label")
+        self.os_label = QLabel()
+        self.os_label.setObjectName("info-label")
+        self.kernel_label = QLabel()
+        self.kernel_label.setObjectName("info-label")
+        self.uptime_label = QLabel()
+        self.uptime_label.setObjectName("info-label")
+        
+        system_info_layout.addWidget(self.hostname_label)
+        system_info_layout.addWidget(self.os_label)
+        system_info_layout.addWidget(self.kernel_label)
+        system_info_layout.addWidget(self.uptime_label)
+        system_info_layout.addStretch()
+        
+        system_info_card.add_layout(system_info_layout)
+        top_row.addWidget(system_info_card, 2)
+        
+        # CPU Usage Card
+        cpu_card = CardWidget("CPU Usage")
+        cpu_layout = QVBoxLayout()
+        cpu_layout.setSpacing(10)
+        
+        # Graph background based on theme
+        graph_bg_color = theme['chart_bg']
+        grid_color = theme['chart_grid']
+        
+        # CPU graph with theme-appropriate colors
         self.cpu_graph = pg.PlotWidget()
-        self.cpu_graph.setBackground('w')
+        self.cpu_graph.setBackground(graph_bg_color)
         self.cpu_graph.setLabel('left', 'Usage', units='%')
         self.cpu_graph.setLabel('bottom', 'Time', units='s')
-        self.cpu_graph.showGrid(x=True, y=True)
+        self.cpu_graph.showGrid(x=True, y=True, alpha=0.3)
+        self.cpu_graph.getAxis('left').setPen(theme['text_primary'])
+        self.cpu_graph.getAxis('bottom').setPen(theme['text_primary'])
+        self.cpu_graph.getAxis('left').setTextPen(theme['text_primary'])
+        self.cpu_graph.getAxis('bottom').setTextPen(theme['text_primary'])
+        self.cpu_graph.setMinimumHeight(180)
+        
         cpu_layout.addWidget(self.cpu_graph)
         
-        # CPU per core
-        self.cpu_cores = {}
-        cores_layout = QHBoxLayout()
+        # CPU cores display in a grid for better organization
+        cores_widget = QWidget()
+        cores_grid = QHBoxLayout(cores_widget)
+        cores_grid.setSpacing(8)
+        cores_grid.setContentsMargins(0, 0, 0, 0)
         
-        # Get CPU count from remote if available
+        # Get CPU count
         cpu_count = 1
         if self.remote:
             try:
@@ -53,63 +143,197 @@ class SystemMonitorWidget(QWidget):
                 cpu_count = 1
         else:
             cpu_count = psutil.cpu_count()
-            
+        
+        # Create core widgets in a horizontal flow
+        self.cpu_cores = {}
         for i in range(cpu_count):
-            core_group = QGroupBox(f"Core {i}")
-            core_layout = QVBoxLayout(core_group)
+            core_widget = QWidget()
+            core_layout = QVBoxLayout(core_widget)
+            core_layout.setContentsMargins(0, 0, 0, 0)
+            core_layout.setSpacing(2)
+            
+            core_label = QLabel(f"Core {i}")
+            core_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            core_label.setObjectName("core-label")
+            
             progress = QProgressBar()
             progress.setRange(0, 100)
+            progress.setTextVisible(True)
+            progress.setObjectName("core-progress")
+            progress.setMinimumWidth(60)
+            progress.setMaximumWidth(80)
+            
+            core_layout.addWidget(core_label)
             core_layout.addWidget(progress)
-            cores_layout.addWidget(core_group)
+            
+            cores_grid.addWidget(core_widget)
             self.cpu_cores[i] = progress
-        cpu_layout.addLayout(cores_layout)
         
-        resources_layout.addWidget(cpu_group)
+        cpu_layout.addWidget(cores_widget)
+        cpu_card.add_layout(cpu_layout)
+        top_row.addWidget(cpu_card, 3)
         
-        # Memory Usage
-        mem_group = QGroupBox("Memory Usage")
-        mem_layout = QVBoxLayout(mem_group)
+        main_layout.addLayout(top_row)
         
+        # Middle row with memory and disk
+        middle_row = QHBoxLayout()
+        middle_row.setSpacing(20)
+        
+        # Memory Card
+        memory_card = CardWidget("Memory Usage")
+        memory_layout = QVBoxLayout()
+        memory_layout.setSpacing(10)
+        
+        # Memory graph
         self.mem_graph = pg.PlotWidget()
-        self.mem_graph.setBackground('w')
+        self.mem_graph.setBackground(graph_bg_color)
         self.mem_graph.setLabel('left', 'Usage', units='%')
         self.mem_graph.setLabel('bottom', 'Time', units='s')
-        self.mem_graph.showGrid(x=True, y=True)
-        mem_layout.addWidget(self.mem_graph)
+        self.mem_graph.showGrid(x=True, y=True, alpha=0.3)
+        self.mem_graph.getAxis('left').setPen(theme['text_primary'])
+        self.mem_graph.getAxis('bottom').setPen(theme['text_primary'])
+        self.mem_graph.getAxis('left').setTextPen(theme['text_primary'])
+        self.mem_graph.getAxis('bottom').setTextPen(theme['text_primary'])
+        self.mem_graph.setMinimumHeight(180)
         
-        # Memory details
+        memory_layout.addWidget(self.mem_graph)
+        
+        # Memory details in a clean horizontal layout
         mem_details = QHBoxLayout()
+        mem_details.setSpacing(15)
+        
+        # Memory info with consistent styling
         self.total_mem = QLabel()
+        self.total_mem.setObjectName("memory-label")
         self.used_mem = QLabel()
+        self.used_mem.setObjectName("memory-label")
         self.free_mem = QLabel()
-        mem_details.addWidget(QLabel("Total:"))
-        mem_details.addWidget(self.total_mem)
-        mem_details.addWidget(QLabel("Used:"))
-        mem_details.addWidget(self.used_mem)
-        mem_details.addWidget(QLabel("Free:"))
-        mem_details.addWidget(self.free_mem)
-        mem_layout.addLayout(mem_details)
+        self.free_mem.setObjectName("memory-label")
         
-        resources_layout.addWidget(mem_group)
+        total_container = QWidget()
+        total_layout = QVBoxLayout(total_container)
+        total_layout.setContentsMargins(0, 0, 0, 0)
+        total_layout.setSpacing(2)
+        total_title = QLabel("Total")
+        total_title.setObjectName("memory-title")
+        total_layout.addWidget(total_title)
+        total_layout.addWidget(self.total_mem)
         
-        # Disk Usage
-        disk_widget = QWidget()
-        disk_layout = QHBoxLayout(disk_widget)
+        used_container = QWidget()
+        used_layout = QVBoxLayout(used_container)
+        used_layout.setContentsMargins(0, 0, 0, 0)
+        used_layout.setSpacing(2)
+        used_title = QLabel("Used")
+        used_title.setObjectName("memory-title")
+        used_layout.addWidget(used_title)
+        used_layout.addWidget(self.used_mem)
         
-        self.disk_label = QLabel("Disk Usage:")
+        free_container = QWidget()
+        free_layout = QVBoxLayout(free_container)
+        free_layout.setContentsMargins(0, 0, 0, 0)
+        free_layout.setSpacing(2)
+        free_title = QLabel("Free")
+        free_title.setObjectName("memory-title")
+        free_layout.addWidget(free_title)
+        free_layout.addWidget(self.free_mem)
+        
+        mem_details.addWidget(total_container)
+        mem_details.addWidget(used_container)
+        mem_details.addWidget(free_container)
+        mem_details.addStretch()
+        
+        memory_layout.addLayout(mem_details)
+        memory_card.add_layout(memory_layout)
+        middle_row.addWidget(memory_card)
+        
+        # Disk Usage Card
+        disk_card = CardWidget("Disk Usage")
+        disk_layout = QVBoxLayout()
+        disk_layout.setSpacing(10)
+        
+        # Disk usage bar with percentage
+        disk_info = QHBoxLayout()
+        self.disk_label = QLabel("Loading...")
+        self.disk_label.setObjectName("disk-label")
+        disk_info.addWidget(self.disk_label)
+        disk_info.addStretch()
+        
+        self.disk_percentage = QLabel()
+        self.disk_percentage.setObjectName("disk-percentage")
+        disk_info.addWidget(self.disk_percentage)
+        
+        disk_layout.addLayout(disk_info)
+        
         self.disk_bar = QProgressBar()
         self.disk_bar.setRange(0, 100)
+        self.disk_bar.setTextVisible(False)
+        self.disk_bar.setObjectName("disk-progress")
+        self.disk_bar.setMinimumHeight(24)
         
-        disk_layout.addWidget(self.disk_label)
         disk_layout.addWidget(self.disk_bar)
-        resources_layout.addWidget(disk_widget)
         
-        layout.addWidget(resources_group)
+        # Disk details
+        disk_details = QHBoxLayout()
+        disk_details.setSpacing(15)
         
-        # Process list
-        processes_group = QGroupBox("Running Processes")
-        processes_layout = QVBoxLayout(processes_group)
+        # Disk space info with consistent styling
+        self.total_disk = QLabel()
+        self.total_disk.setObjectName("disk-detail-label")
+        self.used_disk = QLabel()
+        self.used_disk.setObjectName("disk-detail-label")
+        self.free_disk = QLabel()
+        self.free_disk.setObjectName("disk-detail-label")
         
+        total_disk_container = QWidget()
+        total_disk_layout = QVBoxLayout(total_disk_container)
+        total_disk_layout.setContentsMargins(0, 0, 0, 0)
+        total_disk_layout.setSpacing(2)
+        total_disk_title = QLabel("Total")
+        total_disk_title.setObjectName("disk-detail-title")
+        total_disk_layout.addWidget(total_disk_title)
+        total_disk_layout.addWidget(self.total_disk)
+        
+        used_disk_container = QWidget()
+        used_disk_layout = QVBoxLayout(used_disk_container)
+        used_disk_layout.setContentsMargins(0, 0, 0, 0)
+        used_disk_layout.setSpacing(2)
+        used_disk_title = QLabel("Used")
+        used_disk_title.setObjectName("disk-detail-title")
+        used_disk_layout.addWidget(used_disk_title)
+        used_disk_layout.addWidget(self.used_disk)
+        
+        free_disk_container = QWidget()
+        free_disk_layout = QVBoxLayout(free_disk_container)
+        free_disk_layout.setContentsMargins(0, 0, 0, 0)
+        free_disk_layout.setSpacing(2)
+        free_disk_title = QLabel("Free")
+        free_disk_title.setObjectName("disk-detail-title")
+        free_disk_layout.addWidget(free_disk_title)
+        free_disk_layout.addWidget(self.free_disk)
+        
+        disk_details.addWidget(total_disk_container)
+        disk_details.addWidget(used_disk_container)
+        disk_details.addWidget(free_disk_container)
+        disk_details.addStretch()
+        
+        disk_layout.addLayout(disk_details)
+        disk_layout.addStretch()
+        
+        disk_card.add_layout(disk_layout)
+        middle_row.addWidget(disk_card)
+        
+        main_layout.addLayout(middle_row)
+        
+        # Bottom row with processes and network
+        bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(20)
+        
+        # Process List Card
+        process_card = CardWidget("Running Processes")
+        process_layout = QVBoxLayout()
+        process_layout.setSpacing(10)
+        
+        # Process table with styling
         self.process_table = QTableWidget()
         self.process_table.setColumnCount(5 if self.advanced else 4)
         headers = ["PID", "Name", "CPU %", "Memory %"]
@@ -117,29 +341,47 @@ class SystemMonitorWidget(QWidget):
             headers.append("Status")
         self.process_table.setHorizontalHeaderLabels(headers)
         self.process_table.horizontalHeader().setStretchLastSection(True)
+        self.process_table.setAlternatingRowColors(True)
+        self.process_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.process_table.setMinimumHeight(200)
         
-        processes_layout.addWidget(self.process_table)
-        layout.addWidget(processes_group)
+        process_layout.addWidget(self.process_table)
+        process_card.add_layout(process_layout)
+        bottom_row.addWidget(process_card)
         
-        # Network Usage
-        net_group = QGroupBox("Network Usage")
-        net_layout = QVBoxLayout(net_group)
+        # Network Card
+        network_card = CardWidget("Network Usage")
+        network_layout = QVBoxLayout()
+        network_layout.setSpacing(10)
         
+        # Network graph
         self.net_graph = pg.PlotWidget()
-        self.net_graph.setBackground('w')
+        self.net_graph.setBackground(graph_bg_color)
         self.net_graph.setLabel('left', 'Speed', units='MB/s')
         self.net_graph.setLabel('bottom', 'Time', units='s')
-        self.net_graph.showGrid(x=True, y=True)
-        net_layout.addWidget(self.net_graph)
+        self.net_graph.showGrid(x=True, y=True, alpha=0.3)
+        self.net_graph.getAxis('left').setPen(theme['text_primary'])
+        self.net_graph.getAxis('bottom').setPen(theme['text_primary'])
+        self.net_graph.getAxis('left').setTextPen(theme['text_primary'])
+        self.net_graph.getAxis('bottom').setTextPen(theme['text_primary'])
+        self.net_graph.setMinimumHeight(180)
         
-        # Network interface selection
-        net_interface = QHBoxLayout()
+        network_layout.addWidget(self.net_graph)
+        
+        # Network interface selector
+        net_interface_layout = QHBoxLayout()
+        net_interface_layout.setSpacing(10)
+        
+        interface_label = QLabel("Interface:")
+        interface_label.setObjectName("interface-label")
+        
         self.interface_combo = QComboBox()
+        self.interface_combo.setObjectName("interface-combo")
+        self.interface_combo.setMinimumHeight(28)
         
         # Get network interfaces
         if self.remote:
             try:
-                # Execute command to get network interfaces
                 stdout, _ = self.remote.execute_command("ls /sys/class/net")
                 interfaces = stdout.strip().split()
             except:
@@ -148,32 +390,89 @@ class SystemMonitorWidget(QWidget):
             interfaces = list(psutil.net_if_stats().keys())
             
         self.interface_combo.addItems(interfaces)
-        net_interface.addWidget(QLabel("Interface:"))
-        net_interface.addWidget(self.interface_combo)
-        net_layout.addLayout(net_interface)
+        self.interface_combo.currentIndexChanged.connect(self.update_stats)
         
-        layout.addWidget(net_group)
+        net_interface_layout.addWidget(interface_label)
+        net_interface_layout.addWidget(self.interface_combo)
+        net_interface_layout.addStretch()
+        
+        # Network stats display
+        self.net_stats_layout = QHBoxLayout()
+        self.net_stats_layout.setSpacing(15)
+        
+        # Network stats with consistent styling
+        self.sent_label = QLabel()
+        self.sent_label.setObjectName("network-label")
+        self.recv_label = QLabel()
+        self.recv_label.setObjectName("network-label")
+        
+        sent_container = QWidget()
+        sent_layout = QVBoxLayout(sent_container)
+        sent_layout.setContentsMargins(0, 0, 0, 0)
+        sent_layout.setSpacing(2)
+        sent_title = QLabel("Sent")
+        sent_title.setObjectName("network-title")
+        sent_layout.addWidget(sent_title)
+        sent_layout.addWidget(self.sent_label)
+        
+        recv_container = QWidget()
+        recv_layout = QVBoxLayout(recv_container)
+        recv_layout.setContentsMargins(0, 0, 0, 0)
+        recv_layout.setSpacing(2)
+        recv_title = QLabel("Received")
+        recv_title.setObjectName("network-title")
+        recv_layout.addWidget(recv_title)
+        recv_layout.addWidget(self.recv_label)
+        
+        self.net_stats_layout.addWidget(sent_container)
+        self.net_stats_layout.addWidget(recv_container)
+        self.net_stats_layout.addStretch()
+        
+        network_layout.addLayout(net_interface_layout)
+        network_layout.addLayout(self.net_stats_layout)
+        
+        network_card.add_layout(network_layout)
+        bottom_row.addWidget(network_card)
+        
+        main_layout.addLayout(bottom_row)
         
         # Apply styles
         self.apply_styles()
         
     def setup_graphs(self):
         """Set up the graph data structures"""
+        theme = self.theme_manager.get_theme_styles()
+        
+        # Define pen colors based on theme
+        cpu_pen = pg.mkPen(color=theme['chart_line1'], width=2)
+        mem_pen = pg.mkPen(color=theme['chart_line2'], width=2)
+        net_recv_pen = pg.mkPen(color=theme['chart_line3'], width=2)
+        net_sent_pen = pg.mkPen(color=theme['chart_line4'], width=2)
+        
         # CPU data
         self.cpu_data = deque(maxlen=100)
-        self.cpu_curve = self.cpu_graph.plot(pen='b')
+        self.cpu_curve = self.cpu_graph.plot(pen=cpu_pen)
         
         # Memory data
         self.mem_data = deque(maxlen=100)
-        self.mem_curve = self.mem_graph.plot(pen='r')
+        self.mem_curve = self.mem_graph.plot(pen=mem_pen)
         
-        # Network data
-        self.net_data = deque(maxlen=100)
-        self.net_curve = self.net_graph.plot(pen='g')
+        # Network data - separate lines for sent and received
+        self.net_recv_data = deque(maxlen=100)
+        self.net_sent_data = deque(maxlen=100)
+        self.net_recv_curve = self.net_graph.plot(pen=net_recv_pen, name="Received")
+        self.net_sent_curve = self.net_graph.plot(pen=net_sent_pen, name="Sent")
+        
+        # Add legend to network graph
+        self.net_graph.addLegend()
         
         # Time data
         self.time_data = deque(maxlen=100)
         self.start_time = time.time()
+        
+        # Network counters for calculation
+        self.last_net_io = None
+        self.last_net_time = time.time()
         
         # Initial update
         self.update_stats()
@@ -314,13 +613,17 @@ class SystemMonitorWidget(QWidget):
                 rx_bytes = int(stdout.strip() or "0")
                 
                 total_bytes = (tx_bytes + rx_bytes) / (1024**2)  # Convert to MB
-                self.net_data.append(total_bytes)
-                self.net_curve.setData(list(self.time_data), list(self.net_data))
+                self.net_recv_data.append(total_bytes)
+                self.net_sent_data.append(0)  # Sent data is not provided in the command output
+                self.net_recv_curve.setData(list(self.time_data), list(self.net_recv_data))
+                self.net_sent_curve.setData(list(self.time_data), list(self.net_sent_data))
             except (ValueError, OSError) as e:
                 print(f"Error updating network stats: {str(e)}")
                 # Use 0 as fallback value
-                self.net_data.append(0)
-                self.net_curve.setData(list(self.time_data), list(self.net_data))
+                self.net_recv_data.append(0)
+                self.net_sent_data.append(0)
+                self.net_recv_curve.setData(list(self.time_data), list(self.net_recv_data))
+                self.net_sent_curve.setData(list(self.time_data), list(self.net_sent_data))
             
         except Exception as e:
             print(f"Error updating remote stats: {str(e)}")
@@ -385,8 +688,10 @@ class SystemMonitorWidget(QWidget):
         net_io = psutil.net_io_counters(pernic=True)[interface]
         bytes_sent = net_io.bytes_sent / (1024**2)  # Convert to MB
         bytes_recv = net_io.bytes_recv / (1024**2)  # Convert to MB
-        self.net_data.append(bytes_sent + bytes_recv)
-        self.net_curve.setData(list(self.time_data), list(self.net_data))
+        self.net_recv_data.append(bytes_recv)
+        self.net_sent_data.append(bytes_sent)
+        self.net_recv_curve.setData(list(self.time_data), list(self.net_recv_data))
+        self.net_sent_curve.setData(list(self.time_data), list(self.net_sent_data))
         
     def format_bytes(self, bytes):
         """Format bytes to human readable format"""
@@ -398,30 +703,130 @@ class SystemMonitorWidget(QWidget):
     
     def apply_styles(self):
         """Apply custom styles to the widget"""
-        self.setStyleSheet("""
-            QProgressBar {
-                border: 2px solid #dcdde1;
-                border-radius: 5px;
-                text-align: center;
-                height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: #273c75;
+        theme = self.theme_manager.get_theme_styles()
+        
+        self.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {theme['border_color']};
                 border-radius: 3px;
-            }
-            QLabel {
-                min-width: 100px;
-            }
-            QGroupBox {
+                text-align: center;
+                height: 15px;
+                font-size: 10px;
+                background-color: {theme['bg_tertiary']};
+                color: {theme['text_primary']};
+            }}
+            QProgressBar::chunk {{
+                background-color: {theme['accent_primary']};
+                border-radius: 2px;
+            }}
+            QLabel {{
+                min-width: 60px;
+                font-size: 11px;
+                color: {theme['text_primary']};
+            }}
+            QGroupBox {{
                 font-weight: bold;
-                border: 2px solid #dcdde1;
-                border-radius: 5px;
-                margin-top: 1em;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
+                border: 1px solid {theme['border_color']};
+                border-radius: 4px;
+                margin-top: 0.8em;
+                padding-top: 8px;
+                font-size: 12px;
+                color: {theme['text_primary']};
+                background-color: {theme['bg_secondary']};
+            }}
+            QGroupBox::title {{
                 subcontrol-origin: margin;
-                left: 10px;
+                left: 8px;
                 padding: 0 3px;
-            }
-        """) 
+                color: {theme['text_primary']};
+                background-color: {theme['bg_secondary']};
+            }}
+            QTableWidget {{
+                font-size: 11px;
+                background-color: {theme['bg_secondary']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+                gridline-color: {theme['border_color']};
+            }}
+            QTableWidget::item {{
+                padding: 2px;
+            }}
+            QHeaderView::section {{
+                padding: 3px;
+                font-size: 11px;
+                background-color: {theme['table_header_bg']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+            }}
+            QComboBox {{
+                height: 20px;
+                font-size: 11px;
+                padding: 1px 5px;
+                background-color: {theme['input_bg']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+            }}
+            QWidget {{
+                background-color: {theme['bg_primary']};
+                color: {theme['text_primary']};
+            }}
+        """)
+
+    def update_theme(self):
+        """Update the widget's theme"""
+        # Update graph backgrounds and colors
+        theme = self.theme_manager.get_theme_styles()
+        graph_bg_color = 'w' if self.theme_manager.current_theme == 'light' else '#1e1e1e'
+        
+        # Update graph backgrounds and axis colors
+        if hasattr(self, 'cpu_graph'):
+            self.cpu_graph.setBackground(graph_bg_color)
+            try:
+                self.cpu_graph.getAxis('left').setPen(theme['text_primary'])
+                self.cpu_graph.getAxis('bottom').setPen(theme['text_primary'])
+                self.cpu_graph.getAxis('left').setTextPen(theme['text_primary'])
+                self.cpu_graph.getAxis('bottom').setTextPen(theme['text_primary'])
+                # Update grid colors
+                self.cpu_graph.showGrid(x=True, y=True, alpha=0.3)
+            except AttributeError:
+                # Handle case where getAxis is not available
+                pass
+            
+        if hasattr(self, 'mem_graph'):
+            self.mem_graph.setBackground(graph_bg_color)
+            try:
+                self.mem_graph.getAxis('left').setPen(theme['text_primary'])
+                self.mem_graph.getAxis('bottom').setPen(theme['text_primary'])
+                self.mem_graph.getAxis('left').setTextPen(theme['text_primary'])
+                self.mem_graph.getAxis('bottom').setTextPen(theme['text_primary'])
+                # Update grid colors
+                self.mem_graph.showGrid(x=True, y=True, alpha=0.3)
+            except AttributeError:
+                # Handle case where getAxis is not available
+                pass
+            
+        if hasattr(self, 'net_graph'):
+            self.net_graph.setBackground(graph_bg_color)
+            try:
+                self.net_graph.getAxis('left').setPen(theme['text_primary'])
+                self.net_graph.getAxis('bottom').setPen(theme['text_primary'])
+                self.net_graph.getAxis('left').setTextPen(theme['text_primary'])
+                self.net_graph.getAxis('bottom').setTextPen(theme['text_primary'])
+                # Update grid colors
+                self.net_graph.showGrid(x=True, y=True, alpha=0.3)
+            except AttributeError:
+                # Handle case where getAxis is not available
+                pass
+            
+        # Update plot pens
+        if hasattr(self, 'cpu_curve'):
+            self.cpu_curve.setPen(pg.mkPen(color=theme['chart_line1'], width=2))
+        if hasattr(self, 'mem_curve'):
+            self.mem_curve.setPen(pg.mkPen(color=theme['chart_line2'], width=2))
+        if hasattr(self, 'net_recv_curve'):
+            self.net_recv_curve.setPen(pg.mkPen(color=theme['chart_line3'], width=2))
+        if hasattr(self, 'net_sent_curve'):
+            self.net_sent_curve.setPen(pg.mkPen(color=theme['chart_line4'], width=2))
+            
+        # Apply style updates
+        self.apply_styles() 

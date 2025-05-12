@@ -6,6 +6,7 @@ import subprocess
 import re
 import netifaces
 import structlog
+from src.ui.utils.theme_manager import ThemeManager
 
 logger = structlog.get_logger(__name__)
 
@@ -15,12 +16,17 @@ class NetworkManagerWidget(QWidget):
     def __init__(self, parent=None, remote=None):
         super().__init__(parent)
         self.remote = remote
+        self.theme_manager = ThemeManager()
+        self.theme_manager.theme_changed.connect(self.apply_theme)
         self.setup_ui()
         self.refresh_data()
         
     def setup_ui(self):
         """Set up the user interface"""
         layout = QVBoxLayout(self)
+        
+        # Apply theme styles
+        self.theme_manager.apply_widget_styles(self)
         
         # Network Interfaces
         interface_group = QGroupBox("Network Interfaces")
@@ -266,4 +272,8 @@ class NetworkManagerWidget(QWidget):
             self.refresh_data()
             
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to delete rule: {str(e)}") 
+            QMessageBox.critical(self, "Error", f"Failed to delete rule: {str(e)}")
+            
+    def apply_theme(self):
+        """Apply current theme to the widget"""
+        self.theme_manager.apply_widget_styles(self) 

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QLineEdit, QComboBox, QTableWidget, QTableWidgetItem, QProgressBar,
-    QTextEdit, QGroupBox)
+    QTextEdit, QGroupBox, QFrame)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont, QIcon
 from pathlib import Path
@@ -188,6 +188,76 @@ class SeniorDashboard(BaseDashboard):
         """Apply custom styles to the dashboard"""
         # Call the parent's apply_styles method to use the theme system
         super().apply_styles()
+        
+        # Add additional styles for tables and widgets to make them more responsive
+        theme = self.theme_manager.get_theme_styles()
+        self.setStyleSheet(self.styleSheet() + f"""
+            QTableWidget {{
+                border: 1px solid {theme['border_color']};
+                background-color: {theme['bg_secondary']};
+                gridline-color: {theme['border_color']};
+                border-radius: 4px;
+                color: {theme['text_primary']};
+                font-size: 12px;
+            }}
+            QTableWidget::item {{
+                padding: 4px;
+                border-bottom: 1px solid {theme['border_color']};
+            }}
+            QHeaderView::section {{
+                padding: 4px;
+                font-size: 12px;
+                background-color: {theme['table_header_bg']};
+                color: {theme['text_primary']};
+            }}
+            QGroupBox {{
+                margin-top: 10px;
+                background-color: {theme['bg_secondary']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+            }}
+            QLineEdit, QComboBox, QSpinBox {{
+                padding: 3px;
+                min-height: 20px;
+                background-color: {theme['input_bg']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+            }}
+            QTextEdit {{
+                background-color: {theme['input_bg']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+            }}
+            QPushButton {{
+                min-height: 22px;
+                padding: 3px 10px;
+                background-color: {theme['accent_primary']};
+                color: white;
+                border: none;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['accent_secondary']};
+            }}
+            QLabel {{
+                font-size: 12px;
+                color: {theme['text_primary']};
+            }}
+            QFrame {{
+                background-color: {theme['bg_secondary']};
+                color: {theme['text_primary']};
+                border: 1px solid {theme['border_color']};
+            }}
+        """)
+        
+        # Update section titles and warning labels to ensure they're visible in both themes
+        for obj in self.findChildren(QLabel):
+            # Fix section headers that use blue color
+            if obj.styleSheet() and "color: #0078d4" in obj.styleSheet():
+                obj.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {theme['accent_primary']}; padding-bottom: 5px;")
+            # Fix warning labels
+            elif obj.styleSheet() and "color: #E74C3C" in obj.styleSheet():
+                obj.setStyleSheet(f"font-weight: bold; color: {theme['error_color']};")
         
     def closeEvent(self, event):
         """Handle dashboard close event"""
