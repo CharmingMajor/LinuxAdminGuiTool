@@ -1,0 +1,41 @@
+# GUI
+PySide6>=6.4.0
+
+# System monitoring
+psutil>=5.9.0
+docker>=6.1.3
+paramiko>=3.3.1
+fabric==3.2.2
+
+# Testing
+pytest==8.3.5
+pillow==11.2.1
+
+# Visualization
+pyqtgraph>=0.13.3
+numpy==1.26.4
+
+# Network tools
+netifaces>=0.11.0
+python-nmap==0.7.1
+
+# Security
+bcrypt>=4.0.1
+python-pam==2.0.2
+python-jose==3.3.0
+passlib==1.7.4
+
+# Logging and output formatting
+rich==13.7.0
+structlog>=23.1.0
+
+# Development tools
+black==24.2.0
+flake8==7.0.0
+mypy==1.8.0
+
+# Cryptography
+pycryptodome>=3.17.0
+
+# Database
+# Note: sqlite3 is used but is part of the Python standard library
