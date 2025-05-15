@@ -162,7 +162,6 @@ class LoginWindow(QMainWindow):
                 border: 1px solid {theme['border_color']};
                 min-width: 400px;
                 max-width: 420px;
-                box-shadow: 0 8px 32px {theme['shadow_medium']}, 0 2px 8px {theme['shadow_light']};
             }}
             QWidget#server-info {{
                 background-color: {theme['bg_secondary']};
@@ -202,7 +201,6 @@ class LoginWindow(QMainWindow):
                 border-radius: {theme['radius_sm']};
                 min-height: 24px;
                 margin-bottom: 8px;
-                transition: all {theme['transition_fast']};
             }}
             QLineEdit#login-input:focus {{
                 border: 1.5px solid {theme['accent_primary']};
@@ -222,8 +220,6 @@ class LoginWindow(QMainWindow):
                 font-weight: 600;
                 margin-top: 12px;
                 margin-bottom: 8px;
-                box-shadow: 0 2px 8px {theme['shadow_light']};
-                transition: all {theme['transition_fast']};
             }}
             QPushButton#login-button:hover {{
                 background-color: {theme['accent_secondary']};

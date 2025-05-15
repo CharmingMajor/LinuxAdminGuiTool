@@ -327,7 +327,6 @@ class ThemeManager(QObject):
             
             QPushButton:hover {{
                 background-color: {theme['accent_secondary']};
-                transition: background-color {theme['transition_fast']} ease;
             }}
             
             QPushButton:pressed {{
