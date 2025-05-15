@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QStackedWidget, QMessageBox, QScrollArea, QSizePolicy, QGridLayout)
+    QPushButton, QLabel, QStackedWidget, QMessageBox, QScrollArea, QSizePolicy, QGridLayout, QFrame)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QIcon
 import psutil
@@ -11,6 +11,7 @@ class BaseDashboard(QMainWindow):
     """Base dashboard with common functionality for both Junior and Senior admins"""
     
     logout_requested = Signal()  # Signal for logout
+    switch_role_requested = Signal()  # Signal for switching role (for demo/testing)
     
     def __init__(self, username: str, role: str):
         super().__init__()
@@ -22,56 +23,56 @@ class BaseDashboard(QMainWindow):
         
     def setup_ui(self):
         """Set up the base UI components"""
-        self.setWindowTitle(f"Linux Admin GUI - {self.role.title()} Dashboard")
-        self.setMinimumSize(1024, 768)  # Slightly larger minimum size for better layout
-        
-        # Create central widget and main layout
+        # Main widget
         central_widget = QWidget()
+        central_widget.setObjectName("main-container")
         self.setCentralWidget(central_widget)
+        
+        # Modern dashboard layout with sidebar and main content area
         main_layout = QHBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # Create sidebar
+        # Create fixed width sidebar first (modern approach)
         sidebar = self.create_sidebar()
-        main_layout.addWidget(sidebar)
         
-        # Create main content area with scrolling capability
+        # Content container with header and dynamic content
         content_container = QWidget()
         content_container.setObjectName("content-container")
         content_container_layout = QVBoxLayout(content_container)
         content_container_layout.setContentsMargins(0, 0, 0, 0)
         content_container_layout.setSpacing(0)
         
-        # Header bar with theme toggle and user info
-        header_bar = self.create_header_bar()
-        content_container_layout.addWidget(header_bar)
+        # Create header bar at top of content area, not the whole app
+        header = self.create_header_bar()
+        content_container_layout.addWidget(header)
         
-        # Main content with scroll area
-        content_scroll = QScrollArea()
-        content_scroll.setWidgetResizable(True)
-        content_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        content_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        content_scroll.setObjectName("content-scroll")
-        
-        content_widget = QWidget()
-        content_widget.setObjectName("content-area")
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        content_layout.setSpacing(20)
-        
+        # Content area with stacked widget (pages)
         self.content_stack = QStackedWidget()
         self.content_stack.setObjectName("content-stack")
-        content_layout.addWidget(self.content_stack)
         
-        content_scroll.setWidget(content_widget)
+        # Make stack content scrollable
+        content_scroll = QScrollArea()
+        content_scroll.setObjectName("content-scroll")
+        content_scroll.setWidgetResizable(True)
+        content_scroll.setWidget(self.content_stack)
+        content_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        content_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        content_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Add to layout
         content_container_layout.addWidget(content_scroll)
         
+        # Add sidebar and content container to main layout
+        main_layout.addWidget(sidebar)
         main_layout.addWidget(content_container)
         
         # Set layout proportions for better responsiveness
         main_layout.setStretch(0, 1)  # Sidebar
         main_layout.setStretch(1, 4)  # Content area gets more space
+        
+        # Storage for nav buttons
+        self.nav_buttons = {}
         
         # Track cards for responsive layout
         self._dashboard_cards = []
@@ -86,36 +87,119 @@ class BaseDashboard(QMainWindow):
         
         header = QWidget()
         header.setObjectName("header-bar")
-        header.setMinimumHeight(50)
-        header.setMaximumHeight(50)
+        header.setMinimumHeight(60)
+        header.setMaximumHeight(60)
         
         header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(20, 0, 20, 0)
+        header_layout.setContentsMargins(24, 0, 24, 0)
+        
+        # Left side with page title and breadcrumb
+        left_side = QWidget()
+        left_layout = QVBoxLayout(left_side)
+        left_layout.setContentsMargins(0, 8, 0, 8)
+        left_layout.setSpacing(2)
         
         # Page title (will be updated by child dashboards)
         self.page_title = QLabel("Dashboard")
         self.page_title.setObjectName("page-title")
+        self.page_title.setStyleSheet("font-weight: bold; font-size: 16px;")
         
-        # Right side with theme toggle
+        # Breadcrumb path
+        self.breadcrumb = QLabel("Home")
+        self.breadcrumb.setObjectName("breadcrumb")
+        self.breadcrumb.setStyleSheet(f"color: {theme['text_secondary']}; font-size: 12px;")
+        
+        left_layout.addWidget(self.page_title)
+        left_layout.addWidget(self.breadcrumb)
+        
+        # Right side with theme toggle, user info and role switcher
         right_widgets = QWidget()
         right_layout = QHBoxLayout(right_widgets)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(15)
+        right_layout.setSpacing(16)
         
-        # User info
-        user_info = QLabel(f"{self.username} ({self.role.title()})")
-        user_info.setObjectName("header-user-info")
+        # User info with icon/avatar
+        user_info = QWidget()
+        user_layout = QHBoxLayout(user_info)
+        user_layout.setContentsMargins(0, 0, 0, 0)
+        user_layout.setSpacing(8)
         
-        # Theme toggle button
+        # User avatar placeholder (would be an image in real app)
+        user_avatar = QLabel()
+        user_avatar.setObjectName("user-avatar")
+        user_avatar.setFixedSize(32, 32)
+        user_avatar.setStyleSheet(f"""
+            background-color: {theme['accent_primary']};
+            color: white;
+            border-radius: 16px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 32px;
+        """)
+        user_avatar.setText(self.username[0].upper())  # First letter of username
+        user_layout.addWidget(user_avatar)
+        
+        # User name and role
+        user_info_text = QLabel(f"{self.username}")
+        user_info_text.setObjectName("header-user-info")
+        role_badge = QLabel(f"{self.role.title()}")
+        role_badge.setObjectName("role-badge")
+        role_badge.setStyleSheet(f"""
+            background-color: {theme['accent_primary']};
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: bold;
+        """)
+        
+        user_details = QWidget()
+        user_details_layout = QVBoxLayout(user_details)
+        user_details_layout.setContentsMargins(0, 0, 0, 0)
+        user_details_layout.setSpacing(2)
+        user_details_layout.addWidget(user_info_text)
+        user_details_layout.addWidget(role_badge)
+        
+        user_layout.addWidget(user_details)
+        
+        # Theme toggle button with modern icon
         theme_btn = QPushButton()
         theme_btn.setObjectName("theme-button")
         theme_btn.clicked.connect(self.theme_manager.toggle_theme)
-        theme_btn.setFixedSize(32, 32)
+        theme_btn.setFixedSize(36, 36)
+        theme_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {theme['bg_tertiary']};
+                border: 1px solid {theme['border_color']};
+                border-radius: 18px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['hover_bg']};
+            }}
+        """)
+        
+        # Switch Role button (for demo/testing) with modern styling
+        switch_btn = QPushButton(f"Switch to {'Senior' if self.role == 'junior' else 'Junior'}")
+        switch_btn.setObjectName("switch-role-button")
+        switch_btn.setFixedHeight(36)
+        switch_btn.clicked.connect(self.switch_role_requested.emit)
+        switch_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {theme['bg_tertiary']};
+                border: 1px solid {theme['border_color']};
+                border-radius: 18px;
+                padding: 0 16px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['hover_bg']};
+            }}
+        """)
         
         right_layout.addWidget(user_info)
         right_layout.addWidget(theme_btn)
+        right_layout.addWidget(switch_btn)
         
-        header_layout.addWidget(self.page_title)
+        header_layout.addWidget(left_side)
         header_layout.addStretch()
         header_layout.addWidget(right_widgets)
         
@@ -128,107 +212,169 @@ class BaseDashboard(QMainWindow):
         sidebar = QWidget()
         sidebar.setObjectName("sidebar")
         sidebar.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        sidebar.setFixedWidth(220)
+        sidebar.setFixedWidth(240)
+        
+        # Vertical layout for the entire sidebar
         layout = QVBoxLayout(sidebar)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        # App title/logo section
+        # App logo/branding section at top
         logo_container = QWidget()
         logo_container.setObjectName("logo-container")
-        logo_container.setMinimumHeight(60)
-        logo_container.setMaximumHeight(60)
+        logo_container.setMinimumHeight(70)
+        logo_container.setMaximumHeight(70)
         logo_layout = QHBoxLayout(logo_container)
-        logo_layout.setContentsMargins(15, 0, 15, 0)
+        logo_layout.setContentsMargins(20, 0, 20, 0)
         
-        app_title = QLabel("Linux Admin GUI")
+        # Modern logo with icon and text
+        app_logo = QLabel()
+        app_logo.setObjectName("app-logo")
+        app_logo.setFixedSize(32, 32)
+        app_logo.setStyleSheet(f"""
+            background-color: {theme['accent_primary']};
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+        """)
+        app_logo.setText("LA") # Linux Admin initials
+        
+        app_title = QLabel("Linux Admin")
         app_title.setObjectName("app-title")
-        app_title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        app_title.setStyleSheet("font-weight: bold; font-size: 16px;")
+        
+        logo_layout.addWidget(app_logo)
         logo_layout.addWidget(app_title)
+        logo_layout.addStretch()
         
         layout.addWidget(logo_container)
         
-        # User info section
-        user_container = QWidget()
-        user_container.setObjectName("user-info-container")
-        user_container.setMinimumHeight(50)
-        user_container.setMaximumHeight(50)
-        user_layout = QVBoxLayout(user_container)
-        user_layout.setContentsMargins(15, 5, 15, 5)
-        user_layout.setSpacing(0)
-        
-        username_label = QLabel(f"User: {self.username}")
-        username_label.setObjectName("welcome-label")
-        
-        role_label = QLabel(f"{self.role.title()}")
-        role_label.setObjectName("role-label")
-        
-        user_layout.addWidget(username_label)
-        user_layout.addWidget(role_label)
-        layout.addWidget(user_container)
-        
-        # Navigation section with header
-        nav_header = QLabel("NAVIGATION")
-        nav_header.setObjectName("nav-header")
-        nav_header.setContentsMargins(15, 5, 15, 5)
-        nav_header.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        layout.addWidget(nav_header)
-        
         # Navigation section
-        nav_container = QWidget()
-        nav_container.setObjectName("nav-container")
-        nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(0, 5, 0, 5)
-        nav_layout.setSpacing(1)
+        nav_section = QWidget()
+        nav_section.setObjectName("nav-section")
+        nav_layout = QVBoxLayout(nav_section)
+        nav_layout.setContentsMargins(12, 16, 12, 16)
+        nav_layout.setSpacing(4)
         
-        # Navigation buttons - will be populated by child classes
-        self.nav_buttons = {}
+        # Navigation label
+        nav_label = QLabel("NAVIGATION")
+        nav_label.setObjectName("nav-label")
+        nav_label.setStyleSheet(f"color: {theme['text_secondary']}; font-size: 12px; padding-left: 12px; font-weight: bold;")
+        nav_layout.addWidget(nav_label)
         
-        # Will be filled with navigation buttons
-        layout.addWidget(nav_container)
+        # Navigation container for buttons
+        self.nav_container = QWidget()
+        nav_container_layout = QVBoxLayout(self.nav_container)
+        nav_container_layout.setContentsMargins(0, 8, 0, 0)
+        nav_container_layout.setSpacing(2)
         
-        # Add stretch to push logout to bottom
+        nav_layout.addWidget(self.nav_container)
+        layout.addWidget(nav_section)
+        
+        # User section at bottom of sidebar
+        user_container = QWidget()
+        user_container.setObjectName("sidebar-user-container")
+        user_container.setMinimumHeight(80)
+        user_container.setMaximumHeight(80)
+        user_layout = QHBoxLayout(user_container)
+        user_layout.setContentsMargins(20, 12, 20, 12)
+        
+        # User avatar in sidebar
+        user_avatar = QLabel()
+        user_avatar.setObjectName("sidebar-user-avatar")
+        user_avatar.setFixedSize(40, 40)
+        user_avatar.setStyleSheet(f"""
+            background-color: {theme['accent_primary']};
+            color: white;
+            border-radius: 20px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 40px;
+        """)
+        user_avatar.setText(self.username[0].upper())
+        
+        # User info
+        user_info = QWidget()
+        user_info_layout = QVBoxLayout(user_info)
+        user_info_layout.setContentsMargins(12, 0, 0, 0)
+        user_info_layout.setSpacing(2)
+        
+        username_label = QLabel(self.username)
+        username_label.setObjectName("sidebar-username")
+        username_label.setStyleSheet("font-weight: bold;")
+        
+        role_label = QLabel(self.role.title())
+        role_label.setObjectName("sidebar-role")
+        role_label.setStyleSheet(f"color: {theme['text_secondary']}; font-size: 12px;")
+        
+        user_info_layout.addWidget(username_label)
+        user_info_layout.addWidget(role_label)
+        
+        user_layout.addWidget(user_avatar)
+        user_layout.addWidget(user_info)
+        
+        # Add spacer to push user section to bottom
         layout.addStretch()
-        
-        # Logout section
-        logout_container = QWidget()
-        logout_container.setObjectName("logout-container")
-        logout_container.setMinimumHeight(50)
-        logout_container.setMaximumHeight(50)
-        logout_layout = QHBoxLayout(logout_container)
-        logout_layout.setContentsMargins(15, 5, 15, 5)
-        
-        # Logout button
-        logout_btn = QPushButton("Log Out")
-        logout_btn.setObjectName("logout-button")
-        logout_btn.setMinimumHeight(30)
-        logout_btn.clicked.connect(self.logout_requested.emit)
-        logout_layout.addWidget(logout_btn)
-        
-        layout.addWidget(logout_container)
-        
-        # Store nav_container for adding buttons later
-        self.nav_container = nav_container
+        layout.addWidget(user_container)
         
         return sidebar
         
     def add_nav_button(self, name: str, text: str, icon_path: str = None):
         """Add a navigation button to the sidebar"""
-        btn = QPushButton(text)
-        btn.setObjectName("nav-button")
-        btn.setCheckable(True)
-        btn.setMinimumHeight(36)
+        theme = self.theme_manager.get_theme_styles()
         
+        # Create a container for the button to allow for custom layout
+        btn_container = QWidget()
+        btn_container.setObjectName(f"nav-container-{name}")
+        btn_layout = QHBoxLayout(btn_container)
+        btn_layout.setContentsMargins(6, 2, 6, 2)
+        btn_layout.setSpacing(0)
+        
+        # Create the actual button
+        btn = QPushButton(text)
+        btn.setObjectName(f"nav-button-{name}")
+        btn.setCheckable(True)
+        btn.setMinimumHeight(38)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        # Apply modern styling
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                text-align: left;
+                padding-left: 12px;
+                border-radius: {theme['radius_md']};
+                border: none;
+                font-weight: 500;
+                color: {theme['sidebar_text']};
+                background-color: transparent;
+            }}
+            QPushButton:hover {{
+                background-color: {theme['sidebar_hover']};
+            }}
+            QPushButton:checked {{
+                background-color: {theme['sidebar_active']};
+                color: {theme['sidebar_text_active']};
+                font-weight: bold;
+            }}
+        """)
+        
+        # Add icon if provided
         if icon_path and Path(icon_path).exists():
             btn.setIcon(QIcon(icon_path))
-            btn.setIconSize(QSize(16, 16))
+            btn.setIconSize(QSize(18, 18))
         
         # Connect to change page function
         btn.clicked.connect(lambda checked, n=name: self.change_page(n))
         
-        # Add to nav container
-        self.nav_container.layout().addWidget(btn)
+        # Add button to layout
+        btn_layout.addWidget(btn)
         
+        # Add to nav container
+        self.nav_container.layout().addWidget(btn_container)
+        
+        # Store reference to button
         self.nav_buttons[name] = btn
         return btn
     
@@ -238,11 +384,54 @@ class BaseDashboard(QMainWindow):
         for i in range(self.content_stack.count()):
             if self.content_stack.widget(i).objectName() == name:
                 # Set the page title
-                self.page_title.setText(name.replace('_', ' ').title())
+                title = name.replace('_', ' ').title()
+                self.page_title.setText(title)
+                
+                # Update breadcrumb
+                self.breadcrumb.setText(f"Home > {title}")
                 
                 # Update active button
                 for btn_name, btn in self.nav_buttons.items():
                     btn.setChecked(btn_name == name)
+                    
+                    # Update button styling when active/inactive
+                    if btn_name == name:
+                        theme = self.theme_manager.get_theme_styles()
+                        btn.setStyleSheet(f"""
+                            QPushButton {{
+                                text-align: left;
+                                padding-left: 12px;
+                                border-radius: {theme['radius_md']};
+                                border: none;
+                                font-weight: bold;
+                                color: {theme['sidebar_text_active']};
+                                background-color: {theme['sidebar_active']};
+                            }}
+                            QPushButton:hover {{
+                                background-color: {theme['sidebar_hover']};
+                            }}
+                        """)
+                    else:
+                        theme = self.theme_manager.get_theme_styles()
+                        btn.setStyleSheet(f"""
+                            QPushButton {{
+                                text-align: left;
+                                padding-left: 12px;
+                                border-radius: {theme['radius_md']};
+                                border: none;
+                                font-weight: 500;
+                                color: {theme['sidebar_text']};
+                                background-color: transparent;
+                            }}
+                            QPushButton:hover {{
+                                background-color: {theme['sidebar_hover']};
+                            }}
+                            QPushButton:checked {{
+                                background-color: {theme['sidebar_active']};
+                                color: {theme['sidebar_text_active']};
+                                font-weight: bold;
+                            }}
+                        """)
                 
                 # Switch to the page
                 self.content_stack.setCurrentIndex(i)
@@ -292,278 +481,131 @@ class BaseDashboard(QMainWindow):
         return widget
         
     def apply_styles(self):
-        """Apply styles to the dashboard"""
+        """Apply custom styles to the dashboard"""
         theme = self.theme_manager.get_theme_styles()
         
-        # Update theme button icon based on current theme
-        theme_icon = "sun.svg" if self.theme_manager.current_theme == "dark" else "moon.svg"
-        for btn in self.findChildren(QPushButton):
-            if btn.objectName() == "theme-button":
-                btn.setIcon(QIcon(f"src/assets/{theme_icon}"))
-        
+        # Apply general styles
         self.setStyleSheet(f"""
-            QMainWindow {{
+            QWidget#main-container {{
                 background-color: {theme['bg_primary']};
-                font-family: {theme['font_primary']};
                 color: {theme['text_primary']};
+            }}
+            
+            QWidget#sidebar {{
+                background-color: {theme['sidebar_bg']};
+                border-right: 1px solid {theme['border_color']};
             }}
             
             QWidget#content-container {{
                 background-color: {theme['bg_primary']};
             }}
             
-            QWidget#content-area {{
-                background-color: {theme['bg_primary']};
-                padding: 0;
-            }}
-            
-            QScrollArea#content-scroll {{
-                background-color: transparent;
-                border: none;
-            }}
-            
-            QScrollBar:vertical {{
-                background-color: {theme['scrollbar_bg']};
-                width: 8px;
-                margin: 0px;
-            }}
-            
-            QScrollBar::handle:vertical {{
-                background-color: {theme['scrollbar_handle']};
-                min-height: 30px;
-                border-radius: 4px;
-            }}
-            
-            QScrollBar::handle:vertical:hover {{
-                background-color: {theme['scrollbar_hover']};
-            }}
-            
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0px;
-            }}
-            
-            QWidget#sidebar {{
-                background-color: {theme['sidebar_bg']};
-                color: {theme['sidebar_text']};
-                border-right: 1px solid {theme['sidebar_border']};
-                min-width: 220px;
-                max-width: 220px;
-            }}
-            
-            QWidget#logo-container {{
-                background-color: {theme['header_bg']};
-                border-right: 1px solid {theme['sidebar_border']};
-                border-bottom: 1px solid {theme['sidebar_border']};
-                min-height: 50px;
-            }}
-            
-            QLabel#app-title {{
-                color: {theme['sidebar_text']};
-                font-size: 16px;
-                font-weight: bold;
-            }}
-            
-            QWidget#user-info-container {{
-                background-color: {theme['sidebar_bg']};
-                border-bottom: 1px solid #383838;
-            }}
-            
-            QLabel#welcome-label {{
-                color: {theme['sidebar_text']};
-                font-size: 12px;
-                font-weight: bold;
-            }}
-            
-            QLabel#role-label {{
-                color: {theme['sidebar_text']};
-                opacity: 0.7;
-                font-size: 11px;
-            }}
-            
-            QLabel#nav-header {{
-                color: #888888;
-                font-size: 11px;
-                font-weight: bold;
-                min-height: 25px;
-                letter-spacing: 0.5px;
-            }}
-            
-            QWidget#nav-container {{
-                background-color: {theme['sidebar_bg']};
-            }}
-            
-            QPushButton#nav-button {{
-                background-color: transparent;
-                border: none;
-                border-radius: 0;
-                padding: 7px 15px;
-                text-align: left;
-                color: {theme['sidebar_text']};
-                font-size: 13px;
-            }}
-            
-            QPushButton#nav-button:hover {{
-                background-color: {theme['sidebar_hover']};
-            }}
-            
-            QPushButton#nav-button:checked {{
-                background-color: {theme['sidebar_active']};
-                border-left: 3px solid {theme['accent_primary']};
-                padding-left: 12px;
-                color: {theme['sidebar_text_active']};
-                font-weight: bold;
-            }}
-            
-            QWidget#logout-container {{
-                background-color: {theme['sidebar_bg']};
-                border-top: 1px solid #383838;
-            }}
-            
-            QPushButton#logout-button {{
-                background-color: transparent;
-                color: {theme['sidebar_text']};
-                border: 1px solid #444444;
-                border-radius: {theme['radius_sm']};
-                padding: 5px 10px;
-                font-weight: normal;
-                text-align: center;
-            }}
-            
-            QPushButton#logout-button:hover {{
-                background-color: {theme['sidebar_hover']};
-                border-color: #666666;
-            }}
-            
             QWidget#header-bar {{
                 background-color: {theme['header_bg']};
-                color: white;
-                border-bottom: 1px solid {theme['sidebar_border']};
-                min-height: 50px;
-                padding: 0 20px;
+                border-bottom: 1px solid {theme['border_color']};
             }}
             
             QLabel#page-title {{
+                color: {theme['text_primary']};
                 font-size: 16px;
-                font-weight: normal;
-                color: white;
-            }}
-            
-            QLabel#header-user-info {{
-                color: #bbbbbb;
-                font-size: 12px;
-            }}
-            
-            QPushButton#theme-button {{
-                background-color: transparent;
-                border: none;
-                color: white;
-            }}
-            
-            QPushButton#theme-button:hover {{
-                background-color: #383838;
-                border-radius: 50%;
-            }}
-            
-            /* Content card styling */
-            QGroupBox {{
-                background-color: {theme['bg_secondary']};
-                border: 1px solid {theme['border_color']};
-                border-radius: {theme['radius_sm']};
-                margin-top: 16px;
-                padding: 10px;
                 font-weight: bold;
             }}
             
-            QGroupBox::title {{
-                font-size: 14px;
+            QLabel#app-title {{
                 color: {theme['text_primary']};
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
+                font-size: 16px;
+                font-weight: bold;
             }}
             
-            /* Card-like widgets */
-            QFrame[frameShape="6"] {{  /* StyledPanel */
-                background-color: {theme['bg_secondary']};
-                border: 1px solid {theme['border_color']};
-                border-radius: {theme['radius_sm']};
-                margin-bottom: 15px;
-            }}
-            
-            /* Primary buttons */
-            QPushButton[primary="true"] {{
-                background-color: {theme['accent_primary']};
-                color: white;
-                border: none;
-                border-radius: {theme['radius_sm']};
-                padding: 5px 12px;
-                font-size: 13px;
-            }}
-            
-            QPushButton[primary="true"]:hover {{
-                background-color: {theme['accent_secondary']};
-            }}
-            
-            /* Secondary buttons */
-            QPushButton[flat="true"] {{
-                background-color: white;
-                color: {theme['text_primary']};
-                border: 1px solid {theme['border_color']};
-                border-radius: {theme['radius_sm']};
-                padding: 5px 12px;
-                font-size: 13px;
-            }}
-            
-            QPushButton[flat="true"]:hover {{
-                background-color: {theme['hover_bg']};
-                border-color: {theme['accent_primary']};
-                color: {theme['accent_primary']};
-            }}
-            
-            /* Status badges */
-            QLabel[status="warning"] {{
-                background-color: {theme['warning_color']};
-                color: white;
-                border-radius: 10px;
-                padding: 2px 5px;
-                font-size: 10px;
-            }}
-            
-            QLabel[status="error"] {{
-                background-color: {theme['error_color']};
-                color: white;
-                border-radius: 10px;
-                padding: 2px 5px;
-                font-size: 10px;
-            }}
-            
-            /* Toggle switches */
-            QCheckBox[switch="true"]::indicator {{
-                width: 36px;
-                height: 20px;
+            QScrollArea#content-scroll {{
                 background-color: {theme['bg_primary']};
+                border: none;
+            }}
+            
+            QScrollArea#content-scroll QScrollBar:vertical {{
+                background: {theme['scrollbar_bg']};
+                width: 8px;
+                border-radius: 4px;
+            }}
+            
+            QScrollArea#content-scroll QScrollBar::handle:vertical {{
+                background: {theme['scrollbar_handle']};
+                border-radius: 4px;
+            }}
+            
+            QScrollArea#content-scroll QScrollBar::handle:vertical:hover {{
+                background: {theme['scrollbar_hover']};
+            }}
+            
+            QScrollArea#content-scroll QScrollBar::add-line:vertical,
+            QScrollArea#content-scroll QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            
+            QScrollArea#content-scroll QScrollBar::add-page:vertical,
+            QScrollArea#content-scroll QScrollBar::sub-page:vertical {{
+                background: none;
+            }}
+            
+            /* Frame & card styles */
+            QFrame {{
+                border-radius: {theme['radius_md']};
+                background-color: {theme['bg_tertiary']};
+            }}
+            
+            /* Widget & container styles */
+            QWidget#widget-container {{
+                background-color: {theme['bg_tertiary']};
+                border-radius: {theme['radius_md']};
                 border: 1px solid {theme['border_color']};
-                border-radius: 10px;
-            }}
-            
-            QCheckBox[switch="true"]::indicator:checked {{
-                background-color: {theme['accent_primary']};
-                border-color: {theme['accent_primary']};
-            }}
-            
-            /* Card headers */
-            QWidget[card_header="true"] {{
-                background-color: {theme['bg_secondary']};
-                border-bottom: 1px solid {theme['border_color']};
-                padding: 10px;
-            }}
-            
-            QLabel[card_title="true"] {{
-                font-size: 16px;
-                font-weight: bold;
-                color: {theme['text_primary']};
             }}
         """)
+        
+        # Apply styles to child widgets as needed
+        for btn in self.nav_buttons.values():
+            if btn.isChecked():
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        text-align: left;
+                        padding-left: 12px;
+                        border-radius: {theme['radius_md']};
+                        border: none;
+                        font-weight: bold;
+                        color: {theme['sidebar_text_active']};
+                        background-color: {theme['sidebar_active']};
+                    }}
+                    QPushButton:hover {{
+                        background-color: {theme['sidebar_hover']};
+                    }}
+                """)
+            else:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        text-align: left;
+                        padding-left: 12px;
+                        border-radius: {theme['radius_md']};
+                        border: none;
+                        font-weight: 500;
+                        color: {theme['sidebar_text']};
+                        background-color: transparent;
+                    }}
+                    QPushButton:hover {{
+                        background-color: {theme['sidebar_hover']};
+                    }}
+                    QPushButton:checked {{
+                        background-color: {theme['sidebar_active']};
+                        color: {theme['sidebar_text_active']};
+                        font-weight: bold;
+                    }}
+                """)
+                
+        # Apply theme-specific icon to theme button
+        theme_btn = self.findChild(QPushButton, "theme-button")
+        if theme_btn:
+            if self.theme_manager.current_theme == 'dark':
+                theme_btn.setText("☀️")  # Sun emoji for light mode
+            else:
+                theme_btn.setText("🌙")  # Moon emoji for dark mode
         
     def show_message(self, title: str, message: str, icon: QMessageBox.Icon = QMessageBox.Icon.Information):
         """Show a message box with the given title and message"""
@@ -581,4 +623,83 @@ class BaseDashboard(QMainWindow):
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
-        return msg_box.exec() == QMessageBox.StandardButton.Yes 
+        return msg_box.exec() == QMessageBox.StandardButton.Yes
+
+    def create_card(self, title=None, content=None, icon=None):
+        """Create a modern card widget for dashboard layouts"""
+        theme = self.theme_manager.get_theme_styles()
+        
+        # Create card frame
+        card = QFrame()
+        card.setObjectName("dashboard-card")
+        card.setFrameShape(QFrame.Shape.StyledPanel)
+        card.setStyleSheet(f"""
+            QFrame#dashboard-card {{
+                background-color: {theme['bg_tertiary']};
+                border-radius: {theme['radius_md']};
+                border: 1px solid {theme['border_color']};
+            }}
+        """)
+        
+        # Card layout
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        
+        # Create header if title is provided
+        if title:
+            header = QWidget()
+            header.setObjectName("card-header")
+            header_layout = QHBoxLayout(header)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(10)
+            
+            # Add icon if provided
+            if icon:
+                icon_label = QLabel()
+                icon_label.setObjectName("card-icon")
+                icon_label.setFixedSize(24, 24)
+                icon_label.setText(icon)
+                icon_label.setStyleSheet(f"""
+                    QLabel#card-icon {{
+                        color: {theme['accent_primary']};
+                        font-size: 18px;
+                        background-color: {theme['accent_primary'] + '15'};  /* 15% opacity */
+                        border-radius: 12px;
+                        padding: 1px;
+                        qproperty-alignment: AlignCenter;
+                    }}
+                """)
+                header_layout.addWidget(icon_label)
+            
+            # Add title
+            title_label = QLabel(title)
+            title_label.setObjectName("card-title")
+            title_label.setStyleSheet(f"""
+                QLabel#card-title {{
+                    color: {theme['text_primary']};
+                    font-size: 15px;
+                    font-weight: 600;
+                }}
+            """)
+            header_layout.addWidget(title_label)
+            header_layout.addStretch()
+            
+            layout.addWidget(header)
+            
+            # Add separator
+            separator = QFrame()
+            separator.setFrameShape(QFrame.Shape.HLine)
+            separator.setFrameShadow(QFrame.Shadow.Sunken)
+            separator.setStyleSheet(f"""
+                background-color: {theme['border_color']};
+                border: none;
+                max-height: 1px;
+            """)
+            layout.addWidget(separator)
+        
+        # Add content if provided
+        if content:
+            layout.addWidget(content)
+        
+        return card 
