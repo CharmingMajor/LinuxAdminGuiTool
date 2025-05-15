@@ -108,37 +108,35 @@ class LinuxAdminGUI:
     def on_connection_established(self, remote: RemoteConnection):
         """Handle successful remote connection"""
         try:
+            self.remote = remote  # Store the remote connection for role switching
             # Create the right dashboard based on user role
             if self.current_role == "senior":
                 self.dashboard = SeniorDashboard(remote)
-                # Set the current username for the backend
                 self.dashboard.backend.set_current_user("senior")
             else:
                 self.dashboard = JuniorDashboard(remote)
-                # Set the current username for the backend
                 self.dashboard.backend.set_current_user("junior")
-            
             # Connect logout signal
             self.dashboard.logout_requested.connect(self.handle_logout)
-                
+            # Connect switch role signal for demo/testing
+            self.dashboard.switch_role_requested.connect(self.handle_switch_role)
             self.dashboard.show()
             if self.connect_dialog:
                 self.connect_dialog.close()
             if self.login_window:
                 self.login_window.close()
-            
         except Exception as e:
-            # This error happens sometimes with older Qt versions
             self.logger.error(f"Failed to create dashboard: {str(e)}")
             self.logger.critical("Uncaught exception", exc_info=True)
             QMessageBox.critical(None, "Error", f"Failed to create dashboard: {str(e)}")
-            
+
     def handle_logout(self):
         """Handle logout request"""
         try:
             if self.dashboard:
                 # Disconnect signals before closing
                 self.dashboard.logout_requested.disconnect(self.handle_logout)
+                self.dashboard.switch_role_requested.disconnect(self.handle_switch_role)
                 self.dashboard.close()
                 self.dashboard = None
             
@@ -157,6 +155,41 @@ class LinuxAdminGUI:
         except Exception as e:
             self.logger.error(f"Failed to handle logout: {str(e)}")
             QMessageBox.critical(None, "Error", f"Failed to handle logout: {str(e)}")
+            
+    def handle_switch_role(self):
+        """Swap between senior and junior dashboards for demo/testing."""
+        try:
+            if self.dashboard:
+                # Disconnect signals before closing
+                self.dashboard.logout_requested.disconnect(self.handle_logout)
+                self.dashboard.switch_role_requested.disconnect(self.handle_switch_role)
+                
+                # Prevent remote disconnection during dashboard close
+                # Store and detach backend to prevent cleanup from disconnecting remote
+                current_backend = self.dashboard.backend
+                current_backend.remote = None  # Detach remote from backend to prevent disconnect
+                
+                # Close dashboard
+                self.dashboard.close()
+                self.dashboard = None
+
+            # Toggle role
+            if self.current_role == "senior":
+                self.current_role = "junior"
+                self.dashboard = JuniorDashboard(self.remote)
+                self.dashboard.backend.set_current_user("junior")
+            else:
+                self.current_role = "senior"
+                self.dashboard = SeniorDashboard(self.remote)
+                self.dashboard.backend.set_current_user("senior")
+
+            # Connect signals
+            self.dashboard.logout_requested.connect(self.handle_logout)
+            self.dashboard.switch_role_requested.connect(self.handle_switch_role)
+            self.dashboard.show()
+        except Exception as e:
+            self.logger.error(f"Failed to switch role: {str(e)}")
+            QMessageBox.critical(None, "Error", f"Failed to switch role: {str(e)}")
             
     def run(self):
         """Start the application"""
