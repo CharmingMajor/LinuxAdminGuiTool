@@ -571,6 +571,24 @@ class UserManagerWidget(QWidget):
         
     def refresh_data(self):
         """Refresh all displayed data"""
+        # Track newly created users/groups to prevent them from disappearing
+        self.newly_created = {
+            'users': [],
+            'groups': []
+        }
+        
+        for row in range(self.user_table.rowCount()):
+            if self.user_table.item(row, 0):
+                username = self.user_table.item(row, 0).text()
+                if self.user_table.item(row, 0).background().color().rgba() == QColor(25, 135, 84, 100).rgba():
+                    self.newly_created['users'].append(username)
+        
+        for row in range(self.group_table.rowCount()):
+            if self.group_table.item(row, 0):
+                group_name = self.group_table.item(row, 0).text()
+                if self.group_table.item(row, 0).background().color().rgba() == QColor(25, 135, 84, 100).rgba():
+                    self.newly_created['groups'].append(group_name)
+                    
         # Use QTimer to ensure the refresh happens after UI events
         QTimer.singleShot(100, self._refresh_data_implementation)
     
@@ -580,6 +598,13 @@ class UserManagerWidget(QWidget):
         self.update_group_list()
         if self.is_senior:
             self.update_group_table()
+        
+        # Re-highlight newly created users/groups after refresh
+        if hasattr(self, 'newly_created'):
+            for username in self.newly_created['users']:
+                self.highlight_new_item(self.user_table, username, 0)
+            for group_name in self.newly_created['groups']:
+                self.highlight_new_item(self.group_table, group_name, 0)
         
     def update_group_list(self):
         """Update the group dropdown list"""
@@ -602,12 +627,42 @@ class UserManagerWidget(QWidget):
     def update_user_list(self):
         """Update the user list table"""
         try:
+            # Save the currently visible users to compare later
+            existing_users = {}
+            for row in range(self.user_table.rowCount()):
+                if self.user_table.item(row, 0):  # Username column
+                    username = self.user_table.item(row, 0).text()
+                    # Save highlighted status
+                    highlighted = False
+                    if self.user_table.item(row, 0).background().color().rgba() == QColor(25, 135, 84, 100).rgba():
+                        highlighted = True
+                    
+                    # Save all cell data
+                    user_data = {'highlighted': highlighted, 'cells': {}}
+                    for col in range(self.user_table.columnCount()):
+                        if self.user_table.item(row, col):
+                            user_data['cells'][col] = self.user_table.item(row, col).text()
+                    
+                    existing_users[username] = user_data
+            
             self.user_table.setRowCount(0)
             
+            # Track which users were loaded in this refresh
+            loaded_users = set()
+            
             if self.remote:
-                stdout, stderr = self.remote.execute_command("getent passwd")
-                if stderr:
+                # Use sudo to ensure we can see all users
+                stdout, stderr = self.remote.execute_command("sudo cat /etc/passwd")
+                
+                # If standard approach fails, try alternative methods
+                if not stdout or stderr and "password" not in stderr.lower():
+                    # Try getent which might have different permissions
+                    stdout, stderr = self.remote.execute_command("getent passwd")
+                    
+                if stderr and "password" not in stderr.lower():
                     self.show_status(f"Error getting user list: {stderr}", True)
+                    # Restore saved users rather than showing nothing
+                    self._restore_users_to_table([u for u in existing_users.keys()])
                     return
                     
                 for line in stdout.splitlines():
@@ -620,12 +675,18 @@ class UserManagerWidget(QWidget):
                     self.user_table.insertRow(row)
                     
                     # Username
-                    self.user_table.setItem(row, 0, QTableWidgetItem(user_info[0]))
+                    username = user_info[0]
+                    loaded_users.add(username)
+                    self.user_table.setItem(row, 0, QTableWidgetItem(username))
                     # UID
                     self.user_table.setItem(row, 1, QTableWidgetItem(user_info[2]))
                     # Primary Group
-                    stdout, _ = self.remote.execute_command(f"getent group {user_info[3]}")
-                    group_name = stdout.split(":")[0] if stdout else user_info[3]
+                    # Use sudo for group lookup
+                    stdout_group, _ = self.remote.execute_command(f"sudo getent group {user_info[3]}")
+                    if not stdout_group:
+                        stdout_group, _ = self.remote.execute_command(f"getent group {user_info[3]}")
+                    
+                    group_name = stdout_group.split(":")[0] if stdout_group else user_info[3]
                     self.user_table.setItem(row, 2, QTableWidgetItem(group_name))
                     # Home Directory
                     self.user_table.setItem(row, 3, QTableWidgetItem(user_info[5]))
@@ -635,17 +696,17 @@ class UserManagerWidget(QWidget):
                         has_sudo = self.check_sudo_access(user_info[0])
                         self.user_table.setItem(row, 4, QTableWidgetItem("Yes" if has_sudo else "No"))
             else:
+                # Local implementation for retrieving users
                 import pwd
                 import grp
                 import subprocess
                 
-                # Use subprocess to get user list with sudo to ensure we have proper permissions
                 try:
                     result = subprocess.run(['sudo', 'cat', '/etc/passwd'], 
-                                           stdout=subprocess.PIPE, 
-                                           stderr=subprocess.PIPE,
-                                           universal_newlines=True,
-                                           check=False)
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE,
+                                        universal_newlines=True,
+                                        check=False)
                     
                     if result.returncode != 0:
                         # If sudo fails, fall back to regular method
@@ -680,7 +741,9 @@ class UserManagerWidget(QWidget):
                         row = self.user_table.rowCount()
                         self.user_table.insertRow(row)
                         
-                        self.user_table.setItem(row, 0, QTableWidgetItem(user.pw_name))
+                        username = user.pw_name
+                        loaded_users.add(username)
+                        self.user_table.setItem(row, 0, QTableWidgetItem(username))
                         self.user_table.setItem(row, 1, QTableWidgetItem(str(user.pw_uid)))
                         
                         # Get group name - try with sudo first for better permission access
@@ -711,20 +774,101 @@ class UserManagerWidget(QWidget):
                             has_sudo = self.check_sudo_access(user.pw_name)
                             self.user_table.setItem(row, 4, QTableWidgetItem("Yes" if has_sudo else "No"))
                 except Exception as e:
-                    self.show_status(f"Error loading users: {str(e)}", True)
+                    self.show_status(f"Error loading users from local system: {str(e)}", True)
+            
+            # After loading all users, check if any existing/newly created users are missing
+            if hasattr(self, 'newly_created'):
+                for username in self.newly_created['users']:
+                    if username not in loaded_users and username in existing_users:
+                        # Re-add this user to the table
+                        row = self.user_table.rowCount()
+                        self.user_table.insertRow(row)
+                        
+                        # Restore all cell data
+                        user_data = existing_users[username]
+                        for col, text in user_data['cells'].items():
+                            item = QTableWidgetItem(text)
+                            if user_data['highlighted']:
+                                item.setBackground(QColor(25, 135, 84, 100))
+                            self.user_table.setItem(row, int(col), item)
+                        
+                        # Mark as processed
+                        loaded_users.add(username)
+            
+            # Also restore any other missing users from the existing list as a fallback
+            for username, user_data in existing_users.items():
+                if username not in loaded_users:
+                    row = self.user_table.rowCount()
+                    self.user_table.insertRow(row)
                     
+                    # Restore cell data with "cached" indicator
+                    for col in range(self.user_table.columnCount()):
+                        text = user_data['cells'].get(col, "(cached)")
+                        if col == 0:  # Username column
+                            text = username  # Ensure username is correct
+                        
+                        item = QTableWidgetItem(text)
+                        if user_data['highlighted']:
+                            item.setBackground(QColor(25, 135, 84, 100))
+                        
+                        self.user_table.setItem(row, col, item)
+                        
         except Exception as e:
             self.show_status(f"Failed to load user list: {str(e)}", True)
+            # Fall back to restoring saved users
+            self._restore_users_to_table([u for u in existing_users.keys()])
             
+    def _restore_users_to_table(self, usernames):
+        """Restore previously displayed users to the table as a fallback"""
+        if not usernames:
+            return
+            
+        for username in usernames:
+            row = self.user_table.rowCount()
+            self.user_table.insertRow(row)
+            self.user_table.setItem(row, 0, QTableWidgetItem(username))
+            # Fill other columns with placeholders
+            for col in range(1, self.user_table.columnCount()):
+                self.user_table.setItem(row, col, QTableWidgetItem("(cached)"))
+        
     def update_group_table(self):
         """Update the group table"""
         try:
+            # Save the currently visible groups to compare later
+            existing_groups = {}
+            for row in range(self.group_table.rowCount()):
+                if self.group_table.item(row, 0):  # Group name column
+                    group_name = self.group_table.item(row, 0).text()
+                    # Save highlighted status
+                    highlighted = False
+                    if self.group_table.item(row, 0).background().color().rgba() == QColor(25, 135, 84, 100).rgba():
+                        highlighted = True
+                    
+                    # Save all cell data
+                    group_data = {'highlighted': highlighted, 'cells': {}}
+                    for col in range(self.group_table.columnCount()):
+                        if self.group_table.item(row, col):
+                            group_data['cells'][col] = self.group_table.item(row, col).text()
+                    
+                    existing_groups[group_name] = group_data
+                    
             self.group_table.setRowCount(0)
             
+            # Track which groups were loaded in this refresh
+            loaded_groups = set()
+            
             if self.remote:
-                stdout, stderr = self.remote.execute_command("getent group")
-                if stderr:
+                # Try with sudo first
+                stdout, stderr = self.remote.execute_command("sudo cat /etc/group")
+                
+                # If that fails, try standard method
+                if not stdout or (stderr and "password" not in stderr.lower()):
+                    stdout, stderr = self.remote.execute_command("getent group")
+                
+                if stderr and "password" not in stderr.lower():
                     self.show_status(f"Error getting group list: {stderr}", True)
+                    # Restore saved groups rather than showing nothing
+                    self._restore_groups_to_table([g for g in existing_groups.keys()])
                     return
                     
                 for line in stdout.splitlines():
@@ -732,12 +876,16 @@ class UserManagerWidget(QWidget):
                     row = self.group_table.rowCount()
                     self.group_table.insertRow(row)
                     
-                    self.group_table.setItem(row, 0, QTableWidgetItem(group_info[0]))  # Name
+                    # Group name
+                    group_name = group_info[0]
+                    loaded_groups.add(group_name)
+                    self.group_table.setItem(row, 0, QTableWidgetItem(group_name))  # Name
                     self.group_table.setItem(row, 1, QTableWidgetItem(group_info[2]))  # GID
                     self.group_table.setItem(row, 2, QTableWidgetItem(group_info[3]))  # Members
             else:
-                # Try to use sudo to get more accurate group information
+                # Local implementation for retrieving groups
                 import subprocess
+                import grp
                 
                 try:
                     result = subprocess.run(['sudo', 'cat', '/etc/group'], 
@@ -748,12 +896,13 @@ class UserManagerWidget(QWidget):
                                           
                     if result.returncode != 0:
                         # Fallback to standard method if sudo fails
-                        import grp
                         for group in grp.getgrall():
                             row = self.group_table.rowCount()
                             self.group_table.insertRow(row)
                             
-                            self.group_table.setItem(row, 0, QTableWidgetItem(group.gr_name))
+                            group_name = group.gr_name
+                            loaded_groups.add(group_name)
+                            self.group_table.setItem(row, 0, QTableWidgetItem(group_name))
                             self.group_table.setItem(row, 1, QTableWidgetItem(str(group.gr_gid)))
                             self.group_table.setItem(row, 2, QTableWidgetItem(", ".join(group.gr_mem)))
                     else:
@@ -764,15 +913,69 @@ class UserManagerWidget(QWidget):
                                 row = self.group_table.rowCount()
                                 self.group_table.insertRow(row)
                                 
-                                self.group_table.setItem(row, 0, QTableWidgetItem(fields[0]))  # Name
+                                group_name = fields[0]
+                                loaded_groups.add(group_name)
+                                self.group_table.setItem(row, 0, QTableWidgetItem(group_name))  # Name
                                 self.group_table.setItem(row, 1, QTableWidgetItem(fields[2]))  # GID
                                 self.group_table.setItem(row, 2, QTableWidgetItem(fields[3]))  # Members
                 except Exception as e:
-                    self.show_status(f"Error loading groups: {str(e)}", True)
-                
+                    self.show_status(f"Error loading groups from local system: {str(e)}", True)
+            
+            # After loading all groups, check if any newly created groups are missing
+            if hasattr(self, 'newly_created'):
+                for group_name in self.newly_created['groups']:
+                    if group_name not in loaded_groups and group_name in existing_groups:
+                        # Re-add this group to the table
+                        row = self.group_table.rowCount()
+                        self.group_table.insertRow(row)
+                        
+                        # Restore all cell data
+                        group_data = existing_groups[group_name]
+                        for col, text in group_data['cells'].items():
+                            item = QTableWidgetItem(text)
+                            if group_data['highlighted']:
+                                item.setBackground(QColor(25, 135, 84, 100))
+                            self.group_table.setItem(row, int(col), item)
+                        
+                        # Mark as processed
+                        loaded_groups.add(group_name)
+            
+            # Also restore any other missing groups from the existing list as a fallback
+            for group_name, group_data in existing_groups.items():
+                if group_name not in loaded_groups:
+                    row = self.group_table.rowCount()
+                    self.group_table.insertRow(row)
+                    
+                    # Restore cell data with "cached" indicator
+                    for col in range(self.group_table.columnCount()):
+                        text = group_data['cells'].get(col, "(cached)")
+                        if col == 0:  # Group name column
+                            text = group_name  # Ensure group name is correct
+                        
+                        item = QTableWidgetItem(text)
+                        if group_data['highlighted']:
+                            item.setBackground(QColor(25, 135, 84, 100))
+                        
+                        self.group_table.setItem(row, col, item)
+                        
         except Exception as e:
             self.show_status(f"Failed to load group list: {str(e)}", True)
+            # Fall back to restoring saved groups
+            self._restore_groups_to_table([g for g in existing_groups.keys()])
             
+    def _restore_groups_to_table(self, group_names):
+        """Restore previously displayed groups to the table as a fallback"""
+        if not group_names:
+            return
+            
+        for group_name in group_names:
+            row = self.group_table.rowCount()
+            self.group_table.insertRow(row)
+            self.group_table.setItem(row, 0, QTableWidgetItem(group_name))
+            # Fill other columns with placeholders
+            for col in range(1, self.group_table.columnCount()):
+                self.group_table.setItem(row, col, QTableWidgetItem("(cached)"))
+        
     def create_user(self):
         """Create a new user"""
         username = self.username_input.text()
@@ -849,40 +1052,80 @@ class UserManagerWidget(QWidget):
                 
                 self.user_table.setItem(row, 0, QTableWidgetItem(username))  # Username
                 
-                # Get UID and other details
-                import subprocess
-                try:
-                    uid_result = subprocess.run(['sudo', 'id', '-u', username], 
-                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-                                             universal_newlines=True, check=False)
-                    uid = uid_result.stdout.strip() if uid_result.returncode == 0 else "?"
-                    self.user_table.setItem(row, 1, QTableWidgetItem(uid))  # UID
-                    
-                    # Group
-                    self.user_table.setItem(row, 2, QTableWidgetItem(group))  # Primary Group
-                    
-                    # Home directory
-                    home_result = subprocess.run(['sudo', 'eval', 'echo', '~' + username], 
-                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                              universal_newlines=True, check=False)
-                    home = home_result.stdout.strip() if home_result.returncode == 0 else f"/home/{username}"
-                    self.user_table.setItem(row, 3, QTableWidgetItem(home))  # Home Directory
-                    
-                    # Sudo status
-                    if self.is_senior:
-                        has_sudo = hasattr(self, 'sudo_check') and self.sudo_check.isChecked()
-                        self.user_table.setItem(row, 4, QTableWidgetItem("Yes" if has_sudo else "No"))  # Sudo
-                except:
-                    # If we can't get details, at least show the username
-                    if row > 0:
-                        for col in range(1, self.user_table.columnCount()):
-                            self.user_table.setItem(row, col, QTableWidgetItem(""))
+                if self.remote:
+                    # Get user details via remote connection
+                    try:
+                        # Get UID - try with sudo first
+                        stdout, stderr = self.remote.execute_command(f"sudo id -u {username}")
+                        if not stdout or stderr and "password" not in stderr.lower():
+                            stdout, stderr = self.remote.execute_command(f"id -u {username}")
+                            
+                        uid = stdout.strip() if stdout and not stderr else "?"
+                        self.user_table.setItem(row, 1, QTableWidgetItem(uid))  # UID
+                        
+                        # Group 
+                        self.user_table.setItem(row, 2, QTableWidgetItem(group))  # Primary Group
+                        
+                        # Home directory - try with sudo first
+                        stdout, stderr = self.remote.execute_command(f"sudo eval echo ~{username}")
+                        if not stdout or stderr and "password" not in stderr.lower():
+                            stdout, stderr = self.remote.execute_command(f"eval echo ~{username}")
+                            
+                        home = stdout.strip() if stdout and not stderr else f"/home/{username}"
+                        self.user_table.setItem(row, 3, QTableWidgetItem(home))  # Home Directory
+                        
+                        # Sudo status
+                        if self.is_senior:
+                            has_sudo = hasattr(self, 'sudo_check') and self.sudo_check.isChecked()
+                            self.user_table.setItem(row, 4, QTableWidgetItem("Yes" if has_sudo else "No"))  # Sudo
+                    except Exception as e:
+                        self.show_status(f"Warning: Could not get all user details: {str(e)}", True)
+                        # Still keep the user in the list with basic info
+                        if row >= 0:
+                            for col in range(1, self.user_table.columnCount()):
+                                if not self.user_table.item(row, col):
+                                    self.user_table.setItem(row, col, QTableWidgetItem(""))
+                else:
+                    # Get UID and other details (local)
+                    import subprocess
+                    try:
+                        uid_result = subprocess.run(['sudo', 'id', '-u', username], 
+                                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                                                 universal_newlines=True, check=False)
+                        uid = uid_result.stdout.strip() if uid_result.returncode == 0 else "?"
+                        self.user_table.setItem(row, 1, QTableWidgetItem(uid))  # UID
+                        
+                        # Group
+                        self.user_table.setItem(row, 2, QTableWidgetItem(group))  # Primary Group
+                        
+                        # Home directory
+                        home_result = subprocess.run(['sudo', 'eval', 'echo', '~' + username], 
+                                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                                  universal_newlines=True, check=False)
+                        home = home_result.stdout.strip() if home_result.returncode == 0 else f"/home/{username}"
+                        self.user_table.setItem(row, 3, QTableWidgetItem(home))  # Home Directory
+                        
+                        # Sudo status
+                        if self.is_senior:
+                            has_sudo = hasattr(self, 'sudo_check') and self.sudo_check.isChecked()
+                            self.user_table.setItem(row, 4, QTableWidgetItem("Yes" if has_sudo else "No"))  # Sudo
+                    except:
+                        # If we can't get details, at least show the username
+                        if row >= 0:
+                            for col in range(1, self.user_table.columnCount()):
+                                if not self.user_table.item(row, col):
+                                    self.user_table.setItem(row, col, QTableWidgetItem(""))
                 
-                # Highlight the new user
+                # Highlight the new user and mark it as persistent
                 self.highlight_new_item(self.user_table, username, 0)
                 
-                # Also do a full refresh in the background
-                QTimer.singleShot(2000, self.refresh_data)
+                # Store in persistent user list to prevent disappearing on refresh
+                if not hasattr(self, 'newly_created'):
+                    self.newly_created = {'users': [], 'groups': []}
+                self.newly_created['users'].append(username)
+                
+                # Add a slight delay before refresh to ensure the system has time to register
+                QTimer.singleShot(5000, self.refresh_data)
                 
             else:
                 # Junior admins create task requests
@@ -981,37 +1224,66 @@ class UserManagerWidget(QWidget):
             
             self.group_table.setItem(row, 0, QTableWidgetItem(group_name))  # Group Name
             
-            # Get GID
-            import subprocess
-            try:
-                gid_result = subprocess.run(['sudo', 'getent', 'group', group_name], 
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-                                         universal_newlines=True, check=False)
-                if gid_result.returncode == 0:
-                    gid = gid_result.stdout.strip().split(':')[2]
-                    self.group_table.setItem(row, 1, QTableWidgetItem(gid))  # GID
-                    
-                    # Members (empty for new group)
-                    self.group_table.setItem(row, 2, QTableWidgetItem(""))  # Members
-                else:
-                    # Fallback
-                    self.group_table.setItem(row, 1, QTableWidgetItem("?"))  # GID
-                    self.group_table.setItem(row, 2, QTableWidgetItem(""))  # Members
-            except:
-                # If we can't get details, at least show the group name
-                if row > 0:
-                    self.group_table.setItem(row, 1, QTableWidgetItem(""))
-                    self.group_table.setItem(row, 2, QTableWidgetItem(""))
+            if self.remote:
+                # Get GID via remote connection - try with sudo first
+                try:
+                    stdout, stderr = self.remote.execute_command(f"sudo getent group {group_name}")
+                    if not stdout or stderr and "password" not in stderr.lower():
+                        stdout, stderr = self.remote.execute_command(f"getent group {group_name}")
+                        
+                    if stdout and not stderr:
+                        gid = stdout.strip().split(':')[2]
+                        self.group_table.setItem(row, 1, QTableWidgetItem(gid))  # GID
+                        
+                        # Members (empty for new group)
+                        self.group_table.setItem(row, 2, QTableWidgetItem(""))  # Members
+                    else:
+                        # Fallback
+                        self.group_table.setItem(row, 1, QTableWidgetItem("?"))  # GID
+                        self.group_table.setItem(row, 2, QTableWidgetItem(""))  # Members
+                except Exception as e:
+                    self.show_status(f"Warning: Could not get all group details: {str(e)}", True)
+                    # If we can't get details, at least show the group name
+                    if row >= 0:
+                        self.group_table.setItem(row, 1, QTableWidgetItem(""))
+                        self.group_table.setItem(row, 2, QTableWidgetItem(""))
+            else:
+                # Get GID via local commands
+                import subprocess
+                try:
+                    gid_result = subprocess.run(['sudo', 'getent', 'group', group_name], 
+                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                                             universal_newlines=True, check=False)
+                    if gid_result.returncode == 0:
+                        gid = gid_result.stdout.strip().split(':')[2]
+                        self.group_table.setItem(row, 1, QTableWidgetItem(gid))  # GID
+                        
+                        # Members (empty for new group)
+                        self.group_table.setItem(row, 2, QTableWidgetItem(""))  # Members
+                    else:
+                        # Fallback
+                        self.group_table.setItem(row, 1, QTableWidgetItem("?"))  # GID
+                        self.group_table.setItem(row, 2, QTableWidgetItem(""))  # Members
+                except:
+                    # If we can't get details, at least show the group name
+                    if row >= 0:
+                        self.group_table.setItem(row, 1, QTableWidgetItem(""))
+                        self.group_table.setItem(row, 2, QTableWidgetItem(""))
             
             # Highlight the new group
             self.highlight_new_item(self.group_table, group_name, 0)
+            
+            # Store in persistent group list to prevent disappearing on refresh
+            if not hasattr(self, 'newly_created'):
+                self.newly_created = {'users': [], 'groups': []}
+            self.newly_created['groups'].append(group_name)
             
             # Also update the group combo box for user creation
             if self.group_combo.findText(group_name) == -1:
                 self.group_combo.addItem(group_name)
                 
-            # Also do a full refresh in the background
-            QTimer.singleShot(2000, self.refresh_data)
+            # Add a slight delay before refresh to ensure the system has time to register
+            QTimer.singleShot(5000, self.refresh_data)
             
         except Exception as e:
             self.show_status(f"Failed to create group: {str(e)}", True)
