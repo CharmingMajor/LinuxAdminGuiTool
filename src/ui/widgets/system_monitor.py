@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QProgressBar, QTableWidget, QTableWidgetItem, QGroupBox, QComboBox, QFrame, QSizePolicy)
+    QProgressBar, QTableWidget, QTableWidgetItem, QGroupBox, QComboBox, QFrame, QSizePolicy, QGridLayout)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont, QIcon
 import psutil
@@ -11,37 +11,88 @@ from src.utils.remote_connection import RemoteConnection
 from src.ui.utils.theme_manager import ThemeManager
 
 class CardWidget(QFrame):
-    """A card-like widget with title and content for consistent UI"""
+    """A modern card-like widget with title and content for consistent UI"""
     
-    def __init__(self, title, parent=None):
+    def __init__(self, title, parent=None, icon=None):
         super().__init__(parent)
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setObjectName("card-widget")
         
+        # Get theme styles for consistent coloring
+        theme = ThemeManager().get_theme_styles()
+        
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(15, 15, 15, 15)
-        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(16, 16, 16, 16)
+        self.layout.setSpacing(12)
         
-        # Title with bottom border
-        title_container = QWidget()
-        title_container.setObjectName("card-title-container")
-        title_container.setMaximumHeight(30)
-        title_layout = QHBoxLayout(title_container)
-        title_layout.setContentsMargins(0, 0, 0, 8)
+        # Create a header with icon (if provided) and title
+        header = QWidget()
+        header.setObjectName("card-header")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 12)
+        header_layout.setSpacing(10)
         
+        # Add icon if provided
+        if icon:
+            icon_label = QLabel()
+            icon_label.setObjectName("card-icon")
+            icon_label.setFixedSize(24, 24)
+            icon_label.setText(icon)  # Can be emoji or other text
+            icon_label.setStyleSheet(f"""
+                QLabel#card-icon {{
+                    color: {theme['accent_primary']};
+                    font-size: 16px;
+                    background-color: {theme['accent_primary'] + '15'};  /* 15% opacity background */
+                    border-radius: 12px;
+                    qproperty-alignment: AlignCenter;
+                }}
+            """)
+            header_layout.addWidget(icon_label)
+        
+        # Title with modern styling
         self.title_label = QLabel(title)
         self.title_label.setObjectName("card-title")
-        title_layout.addWidget(self.title_label)
+        self.title_label.setStyleSheet(f"""
+            QLabel#card-title {{
+                color: {theme['text_primary']};
+                font-weight: 600;
+                font-size: 15px;
+            }}
+        """)
+        header_layout.addWidget(self.title_label)
         
-        self.layout.addWidget(title_container)
+        # Add menu button if advanced functionality needed
+        header_layout.addStretch()
+        
+        self.layout.addWidget(header)
+        
+        # Add separator line
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        separator.setStyleSheet(f"""
+            background-color: {theme['border_color']};
+            border: none;
+            max-height: 1px;
+        """)
+        self.layout.addWidget(separator)
         
         # Content container
         self.content = QWidget()
         self.content_layout = QVBoxLayout(self.content)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-        self.content_layout.setSpacing(10)
+        self.content_layout.setContentsMargins(0, 8, 0, 0)
+        self.content_layout.setSpacing(12)
         
         self.layout.addWidget(self.content)
+        
+        # Apply frame styling
+        self.setStyleSheet(f"""
+            QFrame#card-widget {{
+                background-color: {theme['bg_tertiary']};
+                border-radius: {theme['radius_md']};
+                border: 1px solid {theme['border_color']};
+            }}
+        """)
         
     def add_widget(self, widget):
         """Add a widget to the card content"""
@@ -80,12 +131,12 @@ class SystemMonitorWidget(QWidget):
         top_row = QHBoxLayout()
         top_row.setSpacing(20)
         
-        # System Info Card
-        system_info_card = CardWidget("System Information")
+        # System Info Card with computer icon
+        system_info_card = CardWidget("System Information", icon="🖥️")
         system_info_layout = QVBoxLayout()
         system_info_layout.setSpacing(8)
         
-        # System info labels with consistent styling
+        # System info labels with modern styling
         self.hostname_label = QLabel()
         self.hostname_label.setObjectName("info-label")
         self.os_label = QLabel()
@@ -94,6 +145,20 @@ class SystemMonitorWidget(QWidget):
         self.kernel_label.setObjectName("info-label")
         self.uptime_label = QLabel()
         self.uptime_label.setObjectName("info-label")
+        
+        # Apply consistent styling to info labels
+        info_label_style = f"""
+            QLabel#info-label {{
+                padding: 6px 10px;
+                background-color: {theme['bg_secondary']};
+                border-radius: {theme['radius_sm']};
+                border: 1px solid {theme['border_color']};
+            }}
+        """
+        self.hostname_label.setStyleSheet(info_label_style)
+        self.os_label.setStyleSheet(info_label_style)
+        self.kernel_label.setStyleSheet(info_label_style)
+        self.uptime_label.setStyleSheet(info_label_style)
         
         system_info_layout.addWidget(self.hostname_label)
         system_info_layout.addWidget(self.os_label)
@@ -104,8 +169,8 @@ class SystemMonitorWidget(QWidget):
         system_info_card.add_layout(system_info_layout)
         top_row.addWidget(system_info_card, 2)
         
-        # CPU Usage Card
-        cpu_card = CardWidget("CPU Usage")
+        # CPU Usage Card with gauge icon
+        cpu_card = CardWidget("CPU Usage", icon="⚡")
         cpu_layout = QVBoxLayout()
         cpu_layout.setSpacing(10)
         
@@ -129,9 +194,17 @@ class SystemMonitorWidget(QWidget):
         
         # CPU cores display in a grid for better organization
         cores_widget = QWidget()
-        cores_grid = QHBoxLayout(cores_widget)
-        cores_grid.setSpacing(8)
-        cores_grid.setContentsMargins(0, 0, 0, 0)
+        cores_widget.setObjectName("cores-widget")
+        cores_widget.setStyleSheet(f"""
+            QWidget#cores-widget {{
+                background-color: {theme['bg_secondary']};
+                border-radius: {theme['radius_sm']};
+                padding: 8px;
+            }}
+        """)
+        cores_grid = QGridLayout(cores_widget)
+        cores_grid.setSpacing(10)
+        cores_grid.setContentsMargins(8, 8, 8, 8)
         
         # Get CPU count
         cpu_count = 1
@@ -144,13 +217,17 @@ class SystemMonitorWidget(QWidget):
         else:
             cpu_count = psutil.cpu_count()
         
-        # Create core widgets in a horizontal flow
+        # Create core widgets in a grid layout (more compact and organized)
         self.cpu_cores = {}
+        columns = 4  # Number of columns in the grid
         for i in range(cpu_count):
+            row = i // columns
+            col = i % columns
+            
             core_widget = QWidget()
             core_layout = QVBoxLayout(core_widget)
             core_layout.setContentsMargins(0, 0, 0, 0)
-            core_layout.setSpacing(2)
+            core_layout.setSpacing(4)
             
             core_label = QLabel(f"Core {i}")
             core_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -161,13 +238,31 @@ class SystemMonitorWidget(QWidget):
             progress.setTextVisible(True)
             progress.setObjectName("core-progress")
             progress.setMinimumWidth(60)
-            progress.setMaximumWidth(80)
+            progress.setFixedHeight(10)  # Slimmer more modern progress bar
+            progress.setStyleSheet(f"""
+                QProgressBar {{
+                    border: none;
+                    border-radius: 5px;
+                    background-color: {theme['bg_primary']};
+                    text-align: center;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {theme['accent_primary']};
+                    border-radius: 5px;
+                }}
+            """)
+            
+            # Add percentage label underneath progress bar
+            percentage = QLabel("0%")
+            percentage.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            percentage.setObjectName("core-percentage")
             
             core_layout.addWidget(core_label)
             core_layout.addWidget(progress)
+            core_layout.addWidget(percentage)
             
-            cores_grid.addWidget(core_widget)
-            self.cpu_cores[i] = progress
+            cores_grid.addWidget(core_widget, row, col)
+            self.cpu_cores[i] = (progress, percentage)  # Store both progress bar and label
         
         cpu_layout.addWidget(cores_widget)
         cpu_card.add_layout(cpu_layout)
@@ -179,8 +274,8 @@ class SystemMonitorWidget(QWidget):
         middle_row = QHBoxLayout()
         middle_row.setSpacing(20)
         
-        # Memory Card
-        memory_card = CardWidget("Memory Usage")
+        # Memory Card with RAM icon
+        memory_card = CardWidget("Memory Usage", icon="🧠")
         memory_layout = QVBoxLayout()
         memory_layout.setSpacing(10)
         
@@ -198,9 +293,18 @@ class SystemMonitorWidget(QWidget):
         
         memory_layout.addWidget(self.mem_graph)
         
-        # Memory details in a clean horizontal layout
-        mem_details = QHBoxLayout()
-        mem_details.setSpacing(15)
+        # Memory details in a modern card layout
+        mem_stats_container = QWidget()
+        mem_stats_container.setObjectName("memory-stats-container")
+        mem_stats_container.setStyleSheet(f"""
+            QWidget#memory-stats-container {{
+                background-color: {theme['bg_secondary']};
+                border-radius: {theme['radius_sm']};
+                padding: 8px;
+            }}
+        """)
+        mem_details = QHBoxLayout(mem_stats_container)
+        mem_details.setSpacing(20)
         
         # Memory info with consistent styling
         self.total_mem = QLabel()
@@ -216,6 +320,7 @@ class SystemMonitorWidget(QWidget):
         total_layout.setSpacing(2)
         total_title = QLabel("Total")
         total_title.setObjectName("memory-title")
+        total_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         total_layout.addWidget(total_title)
         total_layout.addWidget(self.total_mem)
         
@@ -225,6 +330,7 @@ class SystemMonitorWidget(QWidget):
         used_layout.setSpacing(2)
         used_title = QLabel("Used")
         used_title.setObjectName("memory-title")
+        used_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         used_layout.addWidget(used_title)
         used_layout.addWidget(self.used_mem)
         
@@ -234,6 +340,7 @@ class SystemMonitorWidget(QWidget):
         free_layout.setSpacing(2)
         free_title = QLabel("Free")
         free_title.setObjectName("memory-title")
+        free_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         free_layout.addWidget(free_title)
         free_layout.addWidget(self.free_mem)
         
@@ -242,39 +349,79 @@ class SystemMonitorWidget(QWidget):
         mem_details.addWidget(free_container)
         mem_details.addStretch()
         
-        memory_layout.addLayout(mem_details)
+        memory_layout.addWidget(mem_stats_container)
         memory_card.add_layout(memory_layout)
         middle_row.addWidget(memory_card)
         
-        # Disk Usage Card
-        disk_card = CardWidget("Disk Usage")
+        # Disk Usage Card with disk icon
+        disk_card = CardWidget("Disk Usage", icon="💾")
         disk_layout = QVBoxLayout()
         disk_layout.setSpacing(10)
         
-        # Disk usage bar with percentage
+        # Disk usage bar with percentage in a card-like container
+        disk_progress_container = QWidget()
+        disk_progress_container.setObjectName("disk-progress-container")
+        disk_progress_container.setStyleSheet(f"""
+            QWidget#disk-progress-container {{
+                background-color: {theme['bg_secondary']};
+                border-radius: {theme['radius_sm']};
+                padding: 12px;
+            }}
+        """)
+        disk_progress_layout = QVBoxLayout(disk_progress_container)
+        disk_progress_layout.setContentsMargins(8, 8, 8, 8)
+        disk_progress_layout.setSpacing(8)
+        
+        # Disk usage bar heading with percentage
         disk_info = QHBoxLayout()
-        self.disk_label = QLabel("Loading...")
+        self.disk_label = QLabel("Disk Usage")
         self.disk_label.setObjectName("disk-label")
+        self.disk_label.setStyleSheet("font-weight: 500;")
         disk_info.addWidget(self.disk_label)
         disk_info.addStretch()
         
-        self.disk_percentage = QLabel()
+        self.disk_percentage = QLabel("0%")
         self.disk_percentage.setObjectName("disk-percentage")
+        self.disk_percentage.setStyleSheet(f"color: {theme['accent_primary']}; font-weight: bold;")
         disk_info.addWidget(self.disk_percentage)
         
-        disk_layout.addLayout(disk_info)
+        disk_progress_layout.addLayout(disk_info)
         
+        # Modern slim progress bar
         self.disk_bar = QProgressBar()
         self.disk_bar.setRange(0, 100)
         self.disk_bar.setTextVisible(False)
         self.disk_bar.setObjectName("disk-progress")
-        self.disk_bar.setMinimumHeight(24)
+        self.disk_bar.setFixedHeight(12)
+        self.disk_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: none;
+                border-radius: 6px;
+                background-color: {theme['bg_primary']};
+                text-align: center;
+            }}
+            QProgressBar::chunk {{
+                background-color: {theme['accent_primary']};
+                border-radius: 6px;
+            }}
+        """)
         
-        disk_layout.addWidget(self.disk_bar)
+        disk_progress_layout.addWidget(self.disk_bar)
         
-        # Disk details
-        disk_details = QHBoxLayout()
-        disk_details.setSpacing(15)
+        disk_layout.addWidget(disk_progress_container)
+        
+        # Disk details in a card-like container
+        disk_details_container = QWidget()
+        disk_details_container.setObjectName("disk-details-container")
+        disk_details_container.setStyleSheet(f"""
+            QWidget#disk-details-container {{
+                background-color: {theme['bg_secondary']};
+                border-radius: {theme['radius_sm']};
+                padding: 8px;
+            }}
+        """)
+        disk_details = QHBoxLayout(disk_details_container)
+        disk_details.setSpacing(20)
         
         # Disk space info with consistent styling
         self.total_disk = QLabel()
@@ -290,6 +437,7 @@ class SystemMonitorWidget(QWidget):
         total_disk_layout.setSpacing(2)
         total_disk_title = QLabel("Total")
         total_disk_title.setObjectName("disk-detail-title")
+        total_disk_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         total_disk_layout.addWidget(total_disk_title)
         total_disk_layout.addWidget(self.total_disk)
         
@@ -299,6 +447,7 @@ class SystemMonitorWidget(QWidget):
         used_disk_layout.setSpacing(2)
         used_disk_title = QLabel("Used")
         used_disk_title.setObjectName("disk-detail-title")
+        used_disk_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         used_disk_layout.addWidget(used_disk_title)
         used_disk_layout.addWidget(self.used_disk)
         
@@ -308,6 +457,7 @@ class SystemMonitorWidget(QWidget):
         free_disk_layout.setSpacing(2)
         free_disk_title = QLabel("Free")
         free_disk_title.setObjectName("disk-detail-title")
+        free_disk_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         free_disk_layout.addWidget(free_disk_title)
         free_disk_layout.addWidget(self.free_disk)
         
@@ -316,7 +466,7 @@ class SystemMonitorWidget(QWidget):
         disk_details.addWidget(free_disk_container)
         disk_details.addStretch()
         
-        disk_layout.addLayout(disk_details)
+        disk_layout.addWidget(disk_details_container)
         disk_layout.addStretch()
         
         disk_card.add_layout(disk_layout)
@@ -328,13 +478,14 @@ class SystemMonitorWidget(QWidget):
         bottom_row = QHBoxLayout()
         bottom_row.setSpacing(20)
         
-        # Process List Card
-        process_card = CardWidget("Running Processes")
+        # Process List Card with process icon
+        process_card = CardWidget("Running Processes", icon="🔄")
         process_layout = QVBoxLayout()
         process_layout.setSpacing(10)
         
-        # Process table with styling
+        # Process table with modern styling
         self.process_table = QTableWidget()
+        self.process_table.setObjectName("process-table")
         self.process_table.setColumnCount(5 if self.advanced else 4)
         headers = ["PID", "Name", "CPU %", "Memory %"]
         if self.advanced:
@@ -344,13 +495,32 @@ class SystemMonitorWidget(QWidget):
         self.process_table.setAlternatingRowColors(True)
         self.process_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.process_table.setMinimumHeight(200)
+        self.process_table.setStyleSheet(f"""
+            QTableWidget {{
+                border: none;
+                border-radius: {theme['radius_md']};
+                background-color: {theme['bg_secondary']};
+                gridline-color: {theme['border_color']};
+            }}
+            QHeaderView::section {{
+                background-color: {theme['bg_tertiary']};
+                border: none;
+                padding: 6px;
+                border-bottom: 1px solid {theme['border_color']};
+                font-weight: bold;
+            }}
+            QTableWidget::item {{
+                border-bottom: 1px solid {theme['border_color']};
+                padding: 2px;
+            }}
+        """)
         
         process_layout.addWidget(self.process_table)
         process_card.add_layout(process_layout)
         bottom_row.addWidget(process_card)
         
-        # Network Card
-        network_card = CardWidget("Network Usage")
+        # Network Card with network icon
+        network_card = CardWidget("Network Usage", icon="🌐")
         network_layout = QVBoxLayout()
         network_layout.setSpacing(10)
         
@@ -368,16 +538,42 @@ class SystemMonitorWidget(QWidget):
         
         network_layout.addWidget(self.net_graph)
         
-        # Network interface selector
+        # Network interface selector in container
+        net_controls_container = QWidget()
+        net_controls_container.setObjectName("network-controls")
+        net_controls_container.setStyleSheet(f"""
+            QWidget#network-controls {{
+                background-color: {theme['bg_secondary']};
+                border-radius: {theme['radius_sm']};
+                padding: 8px;
+            }}
+        """)
+        net_controls_layout = QVBoxLayout(net_controls_container)
+        net_controls_layout.setContentsMargins(10, 10, 10, 10)
+        net_controls_layout.setSpacing(10)
+        
         net_interface_layout = QHBoxLayout()
         net_interface_layout.setSpacing(10)
         
         interface_label = QLabel("Interface:")
         interface_label.setObjectName("interface-label")
+        interface_label.setStyleSheet("color: " + theme['text_secondary'] + ";")
         
         self.interface_combo = QComboBox()
         self.interface_combo.setObjectName("interface-combo")
-        self.interface_combo.setMinimumHeight(28)
+        self.interface_combo.setMinimumHeight(30)
+        self.interface_combo.setStyleSheet(f"""
+            QComboBox {{
+                border: 1px solid {theme['border_color']};
+                border-radius: {theme['radius_sm']};
+                padding: 4px 8px;
+                background-color: {theme['bg_tertiary']};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 20px;
+            }}
+        """)
         
         # Get network interfaces
         if self.remote:
@@ -396,9 +592,9 @@ class SystemMonitorWidget(QWidget):
         net_interface_layout.addWidget(self.interface_combo)
         net_interface_layout.addStretch()
         
-        # Network stats display
+        # Network stats display with improved styling
         self.net_stats_layout = QHBoxLayout()
-        self.net_stats_layout.setSpacing(15)
+        self.net_stats_layout.setSpacing(20)
         
         # Network stats with consistent styling
         self.sent_label = QLabel()
@@ -412,6 +608,7 @@ class SystemMonitorWidget(QWidget):
         sent_layout.setSpacing(2)
         sent_title = QLabel("Sent")
         sent_title.setObjectName("network-title")
+        sent_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         sent_layout.addWidget(sent_title)
         sent_layout.addWidget(self.sent_label)
         
@@ -421,6 +618,7 @@ class SystemMonitorWidget(QWidget):
         recv_layout.setSpacing(2)
         recv_title = QLabel("Received")
         recv_title.setObjectName("network-title")
+        recv_title.setStyleSheet("color: " + theme['text_secondary'] + "; font-size: 12px;")
         recv_layout.addWidget(recv_title)
         recv_layout.addWidget(self.recv_label)
         
@@ -428,8 +626,10 @@ class SystemMonitorWidget(QWidget):
         self.net_stats_layout.addWidget(recv_container)
         self.net_stats_layout.addStretch()
         
-        network_layout.addLayout(net_interface_layout)
-        network_layout.addLayout(self.net_stats_layout)
+        net_controls_layout.addLayout(net_interface_layout)
+        net_controls_layout.addLayout(self.net_stats_layout)
+        
+        network_layout.addWidget(net_controls_container)
         
         network_card.add_layout(network_layout)
         bottom_row.addWidget(network_card)
@@ -562,7 +762,10 @@ class SystemMonitorWidget(QWidget):
                             core_percent = float(line.split(':')[1].strip().split()[0])
                     except (IndexError, ValueError):
                         core_percent = float([x for x in line.split() if x.replace('.','',1).isdigit()][0])
-                    self.cpu_cores[i].setValue(int(core_percent))
+                    
+                    progress_bar, percentage_label = self.cpu_cores[i]
+                    progress_bar.setValue(int(core_percent))
+                    percentage_label.setText(f"{core_percent:.1f}%")
             
             # Update Memory
             mem = info["memory"]
@@ -578,9 +781,13 @@ class SystemMonitorWidget(QWidget):
             disk = info["disk"]
             disk_percent = (disk["used"] / disk["total"]) * 100
             self.disk_bar.setValue(int(disk_percent))
-            self.disk_label.setText(
-                f"Disk Usage: {disk_percent:.1f}% ({self.format_bytes(disk['used'])}/{self.format_bytes(disk['total'])})"
-            )
+            self.disk_percentage.setText(f"{disk_percent:.1f}%")
+            self.disk_label.setText("Disk Usage")
+            
+            # Update disk details
+            self.total_disk.setText(self.format_bytes(disk['total']))
+            self.used_disk.setText(self.format_bytes(disk['used']))
+            self.free_disk.setText(self.format_bytes(disk['free']))
             
             # Update Process List
             stdout, _ = self.remote.execute_command("ps aux --sort=-%cpu | head -n 16")
@@ -641,7 +848,10 @@ class SystemMonitorWidget(QWidget):
         
         # Update CPU cores
         for i, percent in enumerate(psutil.cpu_percent(percpu=True)):
-            self.cpu_cores[i].setValue(int(percent))
+            if i in self.cpu_cores:
+                progress_bar, percentage_label = self.cpu_cores[i]
+                progress_bar.setValue(int(percent))
+                percentage_label.setText(f"{percent:.1f}%")
         
         # Update Memory
         mem = psutil.virtual_memory()
@@ -655,9 +865,13 @@ class SystemMonitorWidget(QWidget):
         # Update Disk Usage
         disk = psutil.disk_usage('/')
         self.disk_bar.setValue(int(disk.percent))
-        self.disk_label.setText(
-            f"Disk Usage: {disk.percent}% ({self.format_bytes(disk.used)}/{self.format_bytes(disk.total)})"
-        )
+        self.disk_percentage.setText(f"{disk.percent}%")
+        self.disk_label.setText("Disk Usage")
+        
+        # Update disk details
+        self.total_disk.setText(f"{self.format_bytes(disk.total)}")
+        self.used_disk.setText(f"{self.format_bytes(disk.used)}")
+        self.free_disk.setText(f"{self.format_bytes(disk.free)}")
         
         # Update Process List
         processes = []
