@@ -1,22 +1,16 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QComboBox, QTextEdit, QGroupBox, QFileDialog)
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QIcon
-import os
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QFont
 from pathlib import Path
-# import subprocess # No longer needed for local file reading
-# import time # No longer needed
 
-# Get the project root directory, assuming this widget is always within the project structure
-# This allows us to construct paths to logs/app.log and logs/brute_force_logs.txt
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent 
 LOG_DIR = PROJECT_ROOT / "logs"
 
 class LogViewerWidget(QWidget):
     """Widget for viewing and analyzing application logs"""
     
-    # Removed remote and include_security from constructor
-    # backend_log_method is a callable that will fetch logs, e.g., self.backend.get_system_logs
+    
     def __init__(self, parent=None, advanced=False, backend_log_method=None):
         super().__init__(parent)
         self.advanced = advanced
@@ -71,7 +65,7 @@ class LogViewerWidget(QWidget):
         
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        # Let's use a monospaced font for better log readability
+        
         font = QFont("Monospace")
         font.setStyleHint(QFont.StyleHint.TypeWriter)
         self.log_text.setFont(font)
@@ -94,8 +88,7 @@ class LogViewerWidget(QWidget):
         export_btn = QPushButton("Export Log")
         export_btn.clicked.connect(self.export_log)
         
-        # Clear log might not be a good idea for app logs, maybe disable or remove
-        # For now, let's keep it if advanced is True
+      
         clear_btn = QPushButton("Clear Log (Display Only)") 
         clear_btn.clicked.connect(self.clear_log_display) # Renamed to avoid confusion
         
@@ -117,18 +110,17 @@ class LogViewerWidget(QWidget):
     def load_log(self, log_file_path: Path): # Takes Path object
         """Load the selected log file from the project's logs directory"""
         try:
-            # Ensure logs directory exists (it should, as main.py creates it)
+            # Ensure logs directory exists 
             LOG_DIR.mkdir(exist_ok=True)
 
             if log_file_path.exists():
                 # Read the last N lines (e.g., 1000) for performance with large logs
                 with open(log_file_path, 'r', encoding='utf-8') as f:
-                    # Reading all lines then slicing might be inefficient for huge files
-                    # A more robust solution would read file in reverse or use deque
+                   
                     lines = f.readlines()
-                    content = "".join(lines[-1000:]) # Display last 1000 lines
+                    content = "".join(lines[-1000:])
                 self.log_text.setPlainText(content)
-                # Scroll to the end to show the latest logs
+                
                 self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
             else:
                 self.log_text.setPlainText(f"Log file not found: {log_file_path.name}\nFull path: {log_file_path}")
@@ -144,9 +136,7 @@ class LogViewerWidget(QWidget):
             self.load_log_display_name()
             return
             
-        # Instead of reloading, filter the currently displayed text if it's not too large
-        # or reload and then filter if that's preferred.
-        # For simplicity, let's re-fetch and filter. This ensures filter is applied to latest logs.
+        
         selected_display_name = self.log_selector.currentText()
         log_file_path = self.log_files_map.get(selected_display_name)
         
@@ -164,7 +154,7 @@ class LogViewerWidget(QWidget):
                     line for line in lines
                     if filter_text_lower in line.lower()
                 ]
-                # Display last 1000 of filtered lines if too many
+                
                 self.log_text.setPlainText("".join(filtered_lines[-1000:])) 
                 self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
             else:
@@ -193,7 +183,7 @@ class LogViewerWidget(QWidget):
                 
     def clear_log_display(self): # Renamed method
         """Clear the log display text area"""
-        # This only clears the display, not the actual log file
+        
         self.log_text.clear()
         
     def cleanup(self):

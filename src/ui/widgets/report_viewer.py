@@ -1,38 +1,37 @@
-from os import stat # Seems unused, consider removing.
+from os import stat
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                             QLabel, QTableWidget, QTableWidgetItem, QHeaderView,
                             QComboBox, QMessageBox, QGroupBox, QTextEdit)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor # For setting background colors on table items.
-from src.backend.senior_dashboard_backend import SeniorDashboardBackend # Backend interface for data operations.
+from PySide6.QtGui import QColor
+from src.backend.senior_dashboard_backend import SeniorDashboardBackend
 
 class ReportViewerWidget(QWidget):
-    """Widget for viewing reports from junior admins""" # This is a docstring
+    """Widget for displaying and managing junior admin reports"""
     
-    # Signal emitted when reports are reloaded, so other widgets can update if necessary.
     refresh_requested = Signal()
     
     def __init__(self, backend: SeniorDashboardBackend, parent=None):
         super().__init__(parent)
-        self.backend = backend # Keep a reference to the backend for fetching/updating data.
-        self.setup_ui() # Initialize the user interface for this widget.
+        self.backend = backend
+        self.setup_ui()
         
     def setup_ui(self):
-        """Set up the UI components""" # This is a docstring
-        layout = QVBoxLayout(self) # Main vertical layout for the widget.
+        layout = QVBoxLayout(self)
         
-        # --- Header Section --- 
+        # Header with title and refresh button
         header_layout = QHBoxLayout()
         title_label = QLabel("Junior Admin Reports")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold;") # Make title prominent.
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         refresh_button = QPushButton("Refresh")
-        refresh_button.clicked.connect(self.load_reports) # Connect to actual data loading method.
+        refresh_button.clicked.connect(self.load_reports)
         
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         header_layout.addWidget(refresh_button)
         layout.addLayout(header_layout)
         
+        # Main table for displaying reports
         self.reports_table = QTableWidget()
         self.reports_table.setColumnCount(6)
         self.reports_table.setHorizontalHeaderLabels(["ID", "Date/Time", "From", "Type", "Description", "Status"])
@@ -50,6 +49,7 @@ class ReportViewerWidget(QWidget):
         
         layout.addWidget(self.reports_table)
         
+        # Detail view section
         details_group = QGroupBox("Report Details")
         details_layout = QVBoxLayout(details_group)
         
@@ -57,6 +57,7 @@ class ReportViewerWidget(QWidget):
         self.details_text.setReadOnly(True)
         details_layout.addWidget(self.details_text)
         
+        # Status update controls
         action_layout = QHBoxLayout()
         
         self.status_combo = QComboBox()
@@ -76,7 +77,6 @@ class ReportViewerWidget(QWidget):
         self.load_reports()
         
     def load_reports(self):
-        """Load reports from the database"""
         reports = self.backend.get_junior_reports()
         
         self.reports_table.setRowCount(0)
@@ -92,6 +92,7 @@ class ReportViewerWidget(QWidget):
             
             status_item = QTableWidgetItem(report['status'])
             
+            # Color-code status cells
             if report['status'] == 'pending':
                 status_item.setBackground(QColor(255, 255, 200))
             elif report['status'] == 'in-progress':
@@ -108,7 +109,6 @@ class ReportViewerWidget(QWidget):
         self.refresh_requested.emit()
         
     def on_report_selected(self, currentRow, currentColumn, previousRow, previousColumn):
-        """Handle report selection change"""
         if currentRow >= 0:
             report_id = self.reports_table.item(currentRow, 0).text()
             timestamp = self.reports_table.item(currentRow, 1).text()
@@ -132,7 +132,6 @@ class ReportViewerWidget(QWidget):
             self.details_text.setHtml(details)
             
     def update_report_status(self):
-        """Update the status of the selected report"""
         current_row = self.reports_table.currentRow()
         if current_row >= 0:
             report_id_str = self.reports_table.item(current_row, 0).text()
@@ -154,6 +153,7 @@ class ReportViewerWidget(QWidget):
     def _update_ui_after_status_change(self, new_status, current_row):
         status_item = QTableWidgetItem(new_status)
 
+        # Update status cell with appropriate color
         if new_status == 'pending':
             status_item.setBackground(QColor(255, 255, 200))
         elif new_status == 'in-progress':

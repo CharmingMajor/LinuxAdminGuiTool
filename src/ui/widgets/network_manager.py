@@ -131,11 +131,29 @@ class NetworkManagerWidget(QWidget):
     def refresh_interfaces(self):
         """Refresh the list of network interfaces"""
         try:
-            interfaces, error = self.backend.list_network_interfaces()
+            interfaces = []
+            error_message = ""
+
+            if self.is_senior:
+                interfaces, error_message = self.backend.list_network_interfaces()
+            else:
+                interfaces = self.backend.get_network_interfaces()
+                
+                if not interfaces:
+                    # Check if a remote connection exists
+                    if not self.remote or not self.remote.connected:
+                        error_message = "Remote connection not available."
+                    else:
+                        # This message covers both actual empty list and silent error cases.
+                        error_message = "No network interfaces found or an error occurred while fetching them."
             
-            if error:
-                self._display_output(f"Error listing network interfaces: {error}")
-                return
+            if error_message:
+                self._display_output(f"Error listing network interfaces: {error_message}")
+                
+                if not interfaces: # Ensure table is cleared if error leads to no data
+                    self.interfaces_table.setRowCount(0)
+                    self.interface_combo.clear()
+                return # Stop further processing if a significant error occurred
                 
             self.interfaces_table.setRowCount(0)
             self.interface_combo.clear()

@@ -1,16 +1,16 @@
 from PySide6.QtCore import QObject, Signal
 from pathlib import Path
-import json
 
 class ThemeManager(QObject):
-    """Singleton class to manage application theme"""
+    # Singleton class to manage theme across the application
     
-    theme_changed = Signal(str)  # Emits 'dark' or 'light'
+    theme_changed = Signal(str)
     _instance = None
     _initialized = False
     _config_file = Path.home() / '.linux_admin_gui_theme.json'
     
     def __new__(cls):
+        # Implements singleton pattern
         if cls._instance is None:
             cls._instance = super(ThemeManager, cls).__new__(cls)
         return cls._instance
@@ -22,30 +22,15 @@ class ThemeManager(QObject):
             ThemeManager._initialized = True
     
     def _load_theme(self):
-        """Load theme from config file"""
-        return 'dark'  # Default to dark theme
-    
-    # def _save_theme(self):
-    #     """Save theme to config file"""
-    #     try:
-    #         with open(self._config_file, 'w') as f:
-    #             json.dump({'theme': self._theme}, f)
-    #     except Exception:
-    #         pass
+        # Default to dark theme
+        return 'dark'
     
     @property
     def current_theme(self):
-        """Get current theme"""
         return self._theme
     
-    # def toggle_theme(self):
-    #     """Toggle between light and dark themes"""
-    #     self._theme = 'light' if self._theme == 'dark' else 'dark'
-    #     self._save_theme()
-    #     self.theme_changed.emit(self._theme)
-    
     def get_theme_styles(self):
-        """Get theme styles dictionary"""
+        # Returns a dictionary of all theme colors and style values
         return {
             'bg_primary': '#23272e',
             'bg_secondary': '#181c20',
@@ -68,10 +53,10 @@ class ThemeManager(QObject):
             'warning_color': '#ffb400',
             'info_color': '#0071ce',
             
-            'error_bg': '#4d2825',      # Background for error elements
-            'disabled_bg': '#2c3138',   # Background for disabled elements
-            'disabled_text': '#6a737d', # Text color for disabled elements
-            'disabled_border': '#3a4048',# Border color for disabled elements
+            'error_bg': '#4d2825',
+            'disabled_bg': '#2c3138',
+            'disabled_text': '#6a737d',
+            'disabled_border': '#3a4048',
             
             'table_header_bg': '#232b32',
             'table_row_alt': '#1a1e23',
@@ -109,7 +94,7 @@ class ThemeManager(QObject):
             'font_monospace': '"Red Hat Mono", "Source Code Pro", monospace',
             
             'font_size_sm': '12px',
-            'font_size_md': '13px', # Default/medium font size
+            'font_size_md': '13px',
             'font_size_lg': '16px',
             'font_size_xl': '20px',
             
@@ -122,10 +107,7 @@ class ThemeManager(QObject):
         }
             
     def apply_widget_styles(self, widget):
-        """Apply common theme styles to a widget and its children
-        
-        This centralized method ensures consistent styling across widgets
-        """
+        # Apply common theme styles to widget and its children
         theme = self.get_theme_styles()
         
         # Set the base style for the widget

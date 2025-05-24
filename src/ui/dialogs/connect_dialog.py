@@ -2,8 +2,6 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QLineEdit, QComboBox, QPushButton, QFrame, QMessageBox, QCheckBox, QProgressBar, QFileDialog)
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QIcon, QFont
-import json
-import os
 from pathlib import Path
 from typing import Optional, Dict, List
 import structlog

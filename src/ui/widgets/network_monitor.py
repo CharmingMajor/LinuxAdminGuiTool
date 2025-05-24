@@ -14,18 +14,20 @@ class NetworkMonitorWidget(QWidget):
     
     def __init__(self, parent=None, is_senior=False, remote=None):
         super().__init__(parent)
-        self.is_senior = is_senior
-        self.remote = remote
+        self.is_senior = is_senior  # Controls access to advanced features
+        self.remote = remote  # Reference to remote connection handler if monitoring remote system
         self.setup_ui()
         
     def setup_ui(self):
         """Set up the network monitor UI"""
         layout = QVBoxLayout(self)
         
+        # Network interface selection section
         selector_group = QGroupBox("Network Interface")
         selector_layout = QHBoxLayout(selector_group)
         
         if self.remote:
+            # Get interfaces from remote system
             try:
                 stdout, _ = self.remote.execute_command("ls /sys/class/net")
                 interfaces = stdout.strip().split()
@@ -49,6 +51,7 @@ class NetworkMonitorWidget(QWidget):
         
         layout.addWidget(selector_group)
         
+        # Interface information display section
         info_group = QGroupBox("Interface Information")
         info_layout = QVBoxLayout(info_group)
         
@@ -60,6 +63,7 @@ class NetworkMonitorWidget(QWidget):
         info_layout.addWidget(self.info_table)
         layout.addWidget(info_group)
         
+        # Only show advanced configuration options for senior users
         if self.is_senior:
             config_group = QGroupBox("Interface Configuration")
             config_layout = QHBoxLayout(config_group)
@@ -80,6 +84,7 @@ class NetworkMonitorWidget(QWidget):
             
             layout.addWidget(config_group)
             
+            # Network diagnostic tools section
             tools_group = QGroupBox("Network Tools")
             tools_layout = QHBoxLayout(tools_group)
             
@@ -99,6 +104,7 @@ class NetworkMonitorWidget(QWidget):
             
             layout.addWidget(tools_group)
         
+        # Network traffic monitoring section
         traffic_group = QGroupBox("Network Traffic")
         traffic_layout = QVBoxLayout(traffic_group)
         
@@ -110,9 +116,10 @@ class NetworkMonitorWidget(QWidget):
         
         self.update_interface_info()
         
+        # Setup timer for periodic updates of interface information
         self.refresh_timer = QTimer()
         self.refresh_timer.timeout.connect(self.update_interface_info)
-        self.refresh_timer.start(1000)
+        self.refresh_timer.start(1000)  # Update every second
         
     def get_interfaces(self):
         """Get list of network interfaces"""
@@ -135,6 +142,7 @@ class NetworkMonitorWidget(QWidget):
             
         self.interface_selector.addItems(interfaces)
         
+        # Preserve selected interface if still available
         index = self.interface_selector.findText(current)
         if index >= 0:
             self.interface_selector.setCurrentIndex(index)
@@ -151,27 +159,33 @@ class NetworkMonitorWidget(QWidget):
             if self.remote:
                 self._update_remote_interface_info(interface)
             else:
+                # Get address information using netifaces
                 addrs = netifaces.ifaddresses(interface)
                 
+                # Display IPv4 information if available
                 if netifaces.AF_INET in addrs:
                     ipv4 = addrs[netifaces.AF_INET][0]
                     self.add_info_row("IPv4 Address", ipv4.get("addr", "N/A"))
                     self.add_info_row("IPv4 Netmask", ipv4.get("netmask", "N/A"))
                     
+                # Display IPv6 information if available
                 if netifaces.AF_INET6 in addrs:
                     ipv6 = addrs[netifaces.AF_INET6][0]
                     self.add_info_row("IPv6 Address", ipv6.get("addr", "N/A"))
                     
+                # Display MAC address if available
                 if netifaces.AF_LINK in addrs:
                     link = addrs[netifaces.AF_LINK][0]
                     self.add_info_row("MAC Address", link.get("addr", "N/A"))
                     
+                # Get and display network statistics
                 if stats := psutil.net_io_counters(pernic=True).get(interface):
                     self.add_info_row("Bytes Sent", f"{stats.bytes_sent:,} bytes")
                     self.add_info_row("Bytes Received", f"{stats.bytes_recv:,} bytes")
                     self.add_info_row("Packets Sent", f"{stats.packets_sent:,}")
                     self.add_info_row("Packets Received", f"{stats.packets_recv:,}")
                     
+                    # Append traffic information to the traffic log
                     self.traffic_text.append(
                         f"[{interface}] "
                         f"↑ {stats.bytes_sent:,} bytes "
@@ -190,6 +204,7 @@ class NetworkMonitorWidget(QWidget):
         
     def _update_remote_interface_info(self, interface: str):
         """Fetches and displays interface information for a remote host."""
+        # Get IP addresses using ip command
         stdout, _ = self.remote.execute_command(f"ip addr show {interface}")
         if stdout:
             for line in stdout.split("\n"):
@@ -200,14 +215,17 @@ class NetworkMonitorWidget(QWidget):
                     ip = line.strip().split()[1]
                     self.add_info_row("IPv6 Address", ip)
                     
+        # Get MAC address from sysfs
         stdout, _ = self.remote.execute_command(f"cat /sys/class/net/{interface}/address")
         if stdout:
             self.add_info_row("MAC Address", stdout.strip())
             
+        # Get interface state (UP/DOWN)
         stdout, _ = self.remote.execute_command(f"cat /sys/class/net/{interface}/operstate")
         if stdout:
             self.add_info_row("Status", stdout.strip().upper())
             
+        # Get traffic statistics from sysfs
         stdout, _ = self.remote.execute_command(f"cat /sys/class/net/{interface}/statistics/tx_bytes")
         tx_bytes = int(stdout.strip() or "0")
         stdout, _ = self.remote.execute_command(f"cat /sys/class/net/{interface}/statistics/rx_bytes")
@@ -216,6 +234,7 @@ class NetworkMonitorWidget(QWidget):
         self.add_info_row("Bytes Sent", f"{tx_bytes:,} bytes")
         self.add_info_row("Bytes Received", f"{rx_bytes:,} bytes")
         
+        # Log traffic data
         self.traffic_text.append(
             f"[{interface}] "
             f"↑ {tx_bytes:,} bytes "

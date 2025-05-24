@@ -3,18 +3,18 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QProgressBar, QTableWidget, QTableWidgetItem, QGroupBox, QComboBox, QFrame, QSizePolicy, QGridLayout)
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont, QIcon
-import psutil  # Python system utilities - used for local system monitoring
+import psutil  
 import time
 from datetime import datetime
-import pyqtgraph as pg  # Plotting library for real-time graphs
-from collections import deque  # Efficient list-like container with fast appends and pops
+import pyqtgraph as pg  
+from collections import deque  
 from src.utils.remote_connection import RemoteConnection
 from src.ui.utils.theme_manager import ThemeManager
 from src.ui.utils.theme_manager import ThemeManager
 import logging # Add logging import
 
 class CardWidget(QFrame):
-    """A modern card-like widget with title and content for consistent UI"""
+    # A modern card-like widget with title and content for consistent UI
     
     def __init__(self, title, parent=None, icon=None):
         super().__init__(parent)
@@ -106,25 +106,17 @@ class CardWidget(QFrame):
         self.content_layout.addLayout(layout)
 
 class SystemMonitorWidget(QWidget):
-    """Widget for monitoring system resources and processes in real-time
     
-    This widget displays CPU, memory, disk, and network usage with graphs and metrics.
-    It has two modes:
-    - Basic (for junior admins): Shows essential system information
-    - Advanced (for senior admins): Shows detailed metrics and more controls
-    
-    The widget can monitor either the local system or a remote system via SSH.
-    """
     
     def __init__(self, parent=None, advanced=False, remote: RemoteConnection = None):
         super().__init__(parent)
-        # Store whether this is advanced mode (for senior admins)
+        
         self.advanced = advanced
-        # Store the remote connection (if monitoring a remote system)
+        
         self.remote = remote
         # Initialize logger for this widget
         self.logger = logging.getLogger(__name__)
-        # Get theme manager for consistent styling
+        
         self.theme_manager = ThemeManager()
         self.theme_manager.theme_changed.connect(self.update_theme)
         
@@ -136,33 +128,14 @@ class SystemMonitorWidget(QWidget):
         self.setup_timer()
         
     def update_static_system_info(self, hostname: str, os_info: str, kernel_info: str, uptime_info: str):
-        """Updates the static system information labels within the card.
-        
-        This is called with data retrieved from the remote system.
-        
-        Args:
-            hostname: The system hostname
-            os_info: Operating system name and version
-            kernel_info: Kernel version
-            uptime_info: System uptime information
-        """
+       
         self.hostname_label.setText(f"Hostname: {hostname}")
         self.os_label.setText(f"Operating System: {os_info}")
         self.kernel_label.setText(f"Kernel Version: {kernel_info}")
         self.uptime_label.setText(f"Uptime: {uptime_info}")
 
     def setup_ui(self):
-        """Set up the UI components for system monitoring
         
-        Creates cards for:
-        1. System information (hostname, OS, kernel, uptime)
-        2. CPU usage (graph and per-core metrics)
-        3. Memory usage (graph and details)
-        4. Disk usage (graph and details)
-        5. Network usage (graph and interface details)
-        
-        Advanced mode shows more detailed information.
-        """
         theme = self.theme_manager.get_theme_styles()
         
         # Main layout contains all monitoring cards
@@ -253,7 +226,7 @@ class SystemMonitorWidget(QWidget):
         cores_grid.setSpacing(10)
         cores_grid.setContentsMargins(8, 8, 8, 8)
         
-        # Get CPU count - for remote system, this will be updated later
+        # Get CPU count 
         cpu_count = 1
         if self.remote:
             try:
@@ -284,7 +257,7 @@ class SystemMonitorWidget(QWidget):
             progress.setTextVisible(True)
             progress.setObjectName("core-progress")
             progress.setMinimumWidth(60)
-            progress.setFixedHeight(10)  # Slimmer more modern progress bar
+            progress.setFixedHeight(10)  
             progress.setStyleSheet(f"""
                 QProgressBar {{
                     border: none;
@@ -308,7 +281,7 @@ class SystemMonitorWidget(QWidget):
             core_layout.addWidget(percentage)
             
             cores_grid.addWidget(core_widget, row, col)
-            self.cpu_cores[i] = (progress, percentage)  # Store both progress bar and label
+            self.cpu_cores[i] = (progress, percentage)  
         
         cpu_layout.addWidget(cores_widget)
         cpu_card.add_layout(cpu_layout)

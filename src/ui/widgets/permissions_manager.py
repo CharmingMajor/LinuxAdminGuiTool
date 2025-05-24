@@ -42,6 +42,7 @@ class PermissionsManagerWidget(QWidget):
         role_layout.addWidget(role_label)
         layout.addWidget(role_box)
         
+        # File/Directory path selection section
         path_group = QGroupBox("File/Directory Path")
         path_layout = QHBoxLayout(path_group)
         
@@ -55,6 +56,7 @@ class PermissionsManagerWidget(QWidget):
         
         layout.addWidget(path_group)
         
+        # Owner and group modification section
         owner_group = QGroupBox("Owner and Group")
         owner_layout = QFormLayout(owner_group)
         self.owner_group = owner_group
@@ -77,6 +79,7 @@ class PermissionsManagerWidget(QWidget):
         
         layout.addWidget(owner_group)
         
+        # Unix-style permissions grid (rwx for owner, group, others)
         perm_group = QGroupBox("Permissions")
         perm_layout = QVBoxLayout(perm_group)
         self.perm_group = perm_group
@@ -122,6 +125,7 @@ class PermissionsManagerWidget(QWidget):
         
         perm_layout.addLayout(grid_layout)
         
+        # Numeric mode input (e.g. 755, 644)
         mode_layout = QHBoxLayout()
         mode_layout.addWidget(QLabel("Numeric Mode:"))
         self.mode_input = QLineEdit()
@@ -155,11 +159,13 @@ class PermissionsManagerWidget(QWidget):
         output_layout.addWidget(self.output_console)
         layout.addWidget(output_group)
         
+        # Connect all checkboxes to update the numeric mode display
         for checkbox in [self.read_owner, self.read_group, self.read_others,
                         self.write_owner, self.write_group, self.write_others,
                         self.exec_owner, self.exec_group, self.exec_others]:
             checkbox.stateChanged.connect(self.update_mode_display)
         
+        # Default permission: rw-r--r-- (644)
         self.mode_input.setText("644")
         
         # Disable functionality if not a senior admin
@@ -178,6 +184,7 @@ class PermissionsManagerWidget(QWidget):
     def update_mode_display(self):
         """Update numeric mode based on checkboxes"""
         with contextlib.suppress(Exception):
+            # Calculate owner permission bits (4=read, 2=write, 1=execute)
             owner = 0
             if self.read_owner.isChecked():
                 owner += 4
@@ -186,6 +193,7 @@ class PermissionsManagerWidget(QWidget):
             if self.exec_owner.isChecked():
                 owner += 1
                 
+            # Calculate group permission bits
             group = 0
             if self.read_group.isChecked():
                 group += 4
@@ -194,6 +202,7 @@ class PermissionsManagerWidget(QWidget):
             if self.exec_group.isChecked():
                 group += 1
                 
+            # Calculate others permission bits
             others = 0
             if self.read_others.isChecked():
                 others += 4
@@ -211,18 +220,22 @@ class PermissionsManagerWidget(QWidget):
             if len(mode) != 3 or not mode.isdigit():
                 return
                 
+            # Parse each digit of the permission mode (e.g. 755)
             owner = int(mode[0])
             group = int(mode[1])
             others = int(mode[2])
             
+            # Set owner permission checkboxes
             self.read_owner.setChecked(owner & 4)
             self.write_owner.setChecked(owner & 2)
             self.exec_owner.setChecked(owner & 1)
             
+            # Set group permission checkboxes
             self.read_group.setChecked(group & 4)
             self.write_group.setChecked(group & 2)
             self.exec_group.setChecked(group & 1)
             
+            # Set others permission checkboxes
             self.read_others.setChecked(others & 4)
             self.write_others.setChecked(others & 2)
             self.exec_others.setChecked(others & 1)
@@ -242,9 +255,9 @@ class PermissionsManagerWidget(QWidget):
             return
             
         try:
+            # Display the command that would be run
             self._display_output(f"$ sudo chmod {'-R ' if recursive else ''}{mode} {path}")
             
-            # Use the backend methods
             success, message = self.backend.change_file_permissions(
                 path=path,
                 permissions=mode,
@@ -276,6 +289,7 @@ class PermissionsManagerWidget(QWidget):
             return
             
         try:
+            # Build the ownership specification string (user:group format)
             ownership_spec = ""
             if owner and group:
                 ownership_spec = f"{owner}:{group}"
@@ -284,6 +298,7 @@ class PermissionsManagerWidget(QWidget):
             elif group:
                 ownership_spec = f":{group}"
             
+            # Display the command that would be run
             self._display_output(f"$ sudo chown {'-R ' if recursive else ''}{ownership_spec} {path}")
             
             # Use the backend methods

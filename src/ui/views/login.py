@@ -1,30 +1,23 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, 
-    QLineEdit, QPushButton, QLabel, QMessageBox, QMainWindow, QFrame)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, 
+    QLineEdit, QPushButton, QLabel, QMainWindow, QFrame)
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QIcon, QPixmap
-import time
-from pathlib import Path
 from src.ui.utils.theme_manager import ThemeManager
 from src.backend.auth_backend import AuthBackend
-# from src.utils.crypto import CryptoManager # CryptoManager no longer needed here
 import socket
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 class LoginWindow(QMainWindow):
-    # Define a signal that will be emitted when login succeeds
-    # This will pass the role to the main app
-    login_successful = Signal(str, str)  # Emits (username, role)
+    login_successful = Signal(str, str)  
     
     def __init__(self):
         super().__init__()
-        # Create our backend authentication system
+        # Create backend authentication system
         self.auth_backend = AuthBackend()
         # Create theme manager for consistent styling
         self.theme_manager = ThemeManager()
-        # self.crypto_manager = CryptoManager() # Removed
-        # self.theme_manager.theme_changed.connect(self.apply_styles)
+     
         
         # Set up the window properties
         self.setWindowTitle("Linux Admin GUI - Login")
@@ -44,7 +37,7 @@ class LoginWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Create a nice card for the login form - this gives a modern elevated look
+        # A nice card for the login form 
         login_card = QFrame()
         login_card.setObjectName("login-card")
         login_card.setFrameShape(QFrame.Shape.StyledPanel)
@@ -59,7 +52,7 @@ class LoginWindow(QMainWindow):
         content_layout.setContentsMargins(48, 32, 48, 32)
         content_layout.setSpacing(24)
         
-        # Title with styled text (Linux <b>Admin GUI</b>)
+        # Title with styled text 
         title_label = QLabel()
         title_label.setObjectName("title-label")
         title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -103,7 +96,7 @@ class LoginWindow(QMainWindow):
         login_btn.clicked.connect(self.handle_login)
         content_layout.addWidget(login_btn)
         
-        # Error message area (hidden until needed)
+        # Error message area 
         self.error_label = QLabel("")
         self.error_label.setObjectName("error-label")
         self.error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -140,10 +133,6 @@ class LoginWindow(QMainWindow):
     def apply_styles(self):
         """Apply custom styling to create a modern UI"""
         theme = self.theme_manager.get_theme_styles()
-        
-        # Update theme button icon based on current theme
-        # theme_icon = "sun.svg" # if self.theme_manager.current_theme == "dark" else "moon.svg"
-        # self.theme_btn.setIcon(QIcon(f"src/assets/{theme_icon}"))
         
         # Define styles using CSS-like syntax
         self.setStyleSheet(f"""
@@ -259,17 +248,15 @@ class LoginWindow(QMainWindow):
             return
             
         try:
-            # Get client IP (simplified for local app, might need adjustment for remotes)
+            # Get client IP 
             client_ip = socket.gethostbyname(socket.gethostname()) 
             
             success, message = self.auth_backend.authenticate(username, password, client_ip)
             
             if success:
-                # `message` from auth_backend is the role if successful
                 self.login_successful.emit(username, message) 
                 self.hide()
             else:
-                # `message` from auth_backend is the error string if failed
                 self.show_error(message)  
                 
         except Exception as e:
@@ -283,5 +270,4 @@ class LoginWindow(QMainWindow):
         
     def closeEvent(self, event):
         """Handle window close event"""
-        # In a real app, we might clean up resources here
         event.accept() 

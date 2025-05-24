@@ -7,18 +7,22 @@ import subprocess
 import time
 import re
 
+# This module provides a GUI for configuring and managing firewall rules
+# using the Uncomplicated Firewall (ufw) backend
+
 class FirewallConfigWidget(QWidget):
     """Widget for configuring firewall rules"""
     
     def __init__(self, parent=None, remote=None):
         super().__init__(parent)
-        self.remote = remote
+        self.remote = remote  # Store remote connection for SSH operations
         self.setup_ui()
         
     def setup_ui(self):
         """Set up the firewall configuration UI"""
         layout = QVBoxLayout(self)
         
+        # Status section shows if firewall is active and provides toggle controls
         status_group = QGroupBox("Firewall Status")
         status_layout = QHBoxLayout(status_group)
         
@@ -37,6 +41,7 @@ class FirewallConfigWidget(QWidget):
         
         layout.addWidget(status_group)
         
+        # Rules section displays current firewall rules and rule management controls
         rules_group = QGroupBox("Firewall Rules")
         rules_layout = QVBoxLayout(rules_group)
         
@@ -49,6 +54,7 @@ class FirewallConfigWidget(QWidget):
         
         rules_layout.addWidget(self.rules_table)
         
+        # Control section for creating new firewall rules
         controls_layout = QHBoxLayout()
         
         self.chain_selector = QComboBox()
@@ -85,6 +91,7 @@ class FirewallConfigWidget(QWidget):
         
         rules_layout.addLayout(controls_layout)
         
+        # Buttons for rule management operations
         button_layout = QHBoxLayout()
         
         add_btn = QPushButton("Add Rule")
@@ -111,6 +118,7 @@ class FirewallConfigWidget(QWidget):
         """Refresh the firewall status"""
         try:
             if self.remote:
+                # Handle remote system firewall status check
                 stdout, stderr = self.remote.execute_command("systemctl is-active ufw")
                 if not stderr:
                     status = stdout.strip()
@@ -118,6 +126,7 @@ class FirewallConfigWidget(QWidget):
                 else:
                     self.status_label.setText("Status: Error")
             else:
+                # Handle local system firewall status check
                 output = subprocess.check_output(['systemctl', 'is-active', 'ufw'], text=True)
                 self.status_label.setText(f"Status: {output.strip().title()}")
         except Exception as e:
@@ -127,12 +136,14 @@ class FirewallConfigWidget(QWidget):
         """Toggle the firewall on/off"""
         try:
             if self.remote:
+                # Extract current status and toggle accordingly on remote system
                 current_status = self.status_label.text().split(":")[1].strip().lower()
                 command = "ufw disable" if current_status == "active" else "ufw enable"
                 stdout, stderr = self.remote.execute_command(f"sudo {command}")
                 if stderr:
                     raise RuntimeError(stderr)
             else:
+                # Toggle firewall state on local system
                 current_status = self.status_label.text().split(":")[1].strip().lower()
                 command = ['ufw', 'disable' if current_status == "active" else 'enable']
                 subprocess.run(command, check=True)
@@ -148,6 +159,7 @@ class FirewallConfigWidget(QWidget):
             self.rules_table.setRowCount(0)
             
             if self.remote:
+                # Fetch and parse rules from remote system
                 stdout, stderr = self.remote.execute_command("sudo ufw status numbered")
                 if stderr:
                     raise RuntimeError(stderr)
@@ -165,6 +177,7 @@ class FirewallConfigWidget(QWidget):
                             
                             self.add_rule_to_table(chain, protocol, source, dest, port, action)
             else:
+                # Fetch and parse rules from local system
                 output = subprocess.check_output(['ufw', 'status', 'numbered'], text=True)
                 for line in output.strip().split("\n"):
                     if line.startswith("["):
@@ -197,6 +210,7 @@ class FirewallConfigWidget(QWidget):
     def add_rule(self):
         """Add a new firewall rule"""
         try:
+            # Collect rule parameters from UI inputs
             chain = self.chain_selector.currentText()
             protocol = self.protocol_selector.currentText()
             source = self.source_input.text() or "any"
@@ -204,6 +218,7 @@ class FirewallConfigWidget(QWidget):
             port = self.port_input.value()
             action = self.action_selector.currentText()
             
+            # Build ufw command string
             cmd = f"sudo ufw {action.lower()}"
             if protocol != "all":
                 cmd += f" proto {protocol}"
@@ -235,7 +250,7 @@ class FirewallConfigWidget(QWidget):
                 return
                 
             row = selected[0].row()
-            rule_number = row + 1
+            rule_number = row + 1  # UFW rules are 1-indexed
             
             if self.remote:
                 stdout, stderr = self.remote.execute_command(f"sudo ufw delete {rule_number}")
@@ -262,11 +277,12 @@ class FirewallConfigWidget(QWidget):
             
             if reply == QMessageBox.StandardButton.Yes:
                 if self.remote:
+                    # Use echo to automatically confirm the reset prompt on remote system
                     stdout, stderr = self.remote.execute_command("echo y | sudo ufw reset")
                     if stderr:
                         raise RuntimeError(stderr)
                 else:
-                    # Use echo to automatically confirm the reset prompt
+                    # Use echo to automatically confirm the reset prompt on local system
                     subprocess.run(['ufw', 'reset'], check=True)
                     
                 self.rules_table.setRowCount(0)

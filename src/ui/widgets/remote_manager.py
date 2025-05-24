@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QMessageBox, QDialog, QFormLayout, QSpinBox, QComboBox, QInputDialog, QProgressBar)
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QIcon
-import paramiko
+import paramiko  # SSH client library
 import psutil
 import json
 from pathlib import Path
@@ -25,7 +25,7 @@ class AddHostDialog(QDialog):
         self.host_input = QLineEdit()
         self.port_input = QSpinBox()
         self.port_input.setRange(1, 65535)
-        self.port_input.setValue(22)
+        self.port_input.setValue(22)  # Default SSH port
         self.username_input = QLineEdit()
         
         layout.addRow("Name:", self.name_input)
@@ -146,7 +146,7 @@ class RemoteManagerWidget(QWidget):
         manage_layout.addLayout(cmd_layout)
         layout.addWidget(manage_group)
 
-    # TODO Rename this here and in `setup_ui`
+    # Helper method to add a widget to layout with stretch
     def _extracted_from_setup_ui_46(self, arg0, arg1, arg2):
         arg0.addWidget(arg1)
         arg0.addStretch()
@@ -251,7 +251,7 @@ class RemoteManagerWidget(QWidget):
         username = self.hosts_table.item(row, 3).text()
         
         try:
-            # Get SSH key or password
+            # Try to use SSH key authentication first
             key_path = os.path.expanduser("~/.ssh/id_rsa")
             if os.path.exists(key_path):
                 key = paramiko.RSAKey.from_private_key_file(key_path)
@@ -316,6 +316,7 @@ class RemoteManagerWidget(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to send command: {str(e)}")
             
     def _execute_remote_command_and_display_output(self, name, command):
+        """Execute a command on the remote host and show the output"""
         client = self.ssh_clients[name]
         stdin, stdout, stderr = client.exec_command(command)
         output = stdout.read().decode()
@@ -345,6 +346,7 @@ class RemoteManagerWidget(QWidget):
         action = self.action_selector.currentText()
         
         try:
+            # Route to the appropriate data retrieval method based on selected action
             if action == "System Monitor":
                 self.get_system_info(name)
             elif action == "Process Manager":
@@ -368,8 +370,8 @@ class RemoteManagerWidget(QWidget):
             "free -h",
             "df -h",
             "cat /proc/cpuinfo | grep 'model name' | head -n1",
-            "uname -a",  # Added system info
-            "lscpu | grep 'CPU(s):' | head -n1"  # Added CPU count
+            "uname -a",  # System kernel and version info
+            "lscpu | grep 'CPU(s):' | head -n1"  # CPU count
         ]
 
         self.output_text.clear()

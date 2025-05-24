@@ -1,24 +1,17 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QLineEdit, QComboBox, QTableWidget, QTableWidgetItem, QProgressBar,
-    QTextEdit, QGroupBox, QMessageBox, QFrame, QGridLayout, QSizePolicy)
-from PySide6.QtCore import Qt, Signal, QTimer, QThread
-from PySide6.QtGui import QFont, QIcon
-from pathlib import Path
+    QLabel,  QComboBox, QTableWidget, QTableWidgetItem,
+    QTextEdit, QGroupBox, QMessageBox)
+from PySide6.QtCore import Signal, QTimer, QThread
 from src.ui.views.base_dashboard import BaseDashboard
 from src.ui.widgets.system_monitor import SystemMonitorWidget
 from src.ui.widgets.user_manager import UserManagerWidget
-from src.ui.widgets.network_monitor import NetworkMonitorWidget
 from src.ui.widgets.network_manager import NetworkManagerWidget
-from src.ui.widgets.firewall_config import FirewallConfigWidget
 from src.ui.widgets.permissions_manager import PermissionsManagerWidget
 from src.ui.widgets.update_manager import UpdateManagerWidget
 from src.ui.widgets.backup_manager import BackupManagerWidget
 from src.ui.widgets.acl_manager import ACLManagerWidget
 from src.utils.remote_connection import RemoteConnection
 from src.backend.junior_backend import JuniorBackend
-import psutil
-from datetime import datetime
-import time
 from src.ui.utils.worker import Worker
 
 class JuniorDashboard(BaseDashboard):
@@ -502,9 +495,19 @@ class JuniorDashboard(BaseDashboard):
             self.update_timer.stop()
         
         # Quit and wait for the system info thread if it's running
-        if hasattr(self, 'sysinfo_thread') and self.sysinfo_thread and self.sysinfo_thread.isRunning():
-            self.sysinfo_thread.quit()
-            self.sysinfo_thread.wait()
+        if hasattr(self, 'sysinfo_thread') and self.sysinfo_thread:
+            try:
+                if self.sysinfo_thread.isRunning():
+                    self.sysinfo_thread.quit()
+                    self.sysinfo_thread.wait()
+            except RuntimeError:
+                # This can happen if the C++ object is already deleted.
+                if hasattr(self, 'logger') and self.logger:
+                    self.logger.warning(
+                        "sysinfo_thread encountered RuntimeError (likely already deleted) during closeEvent."
+                    )
+                # It's safe to pass here as the thread is no longer running or manageable.
+                pass
 
         if hasattr(self, 'system_monitor') and self.system_monitor:
             self.system_monitor.stop_monitoring()

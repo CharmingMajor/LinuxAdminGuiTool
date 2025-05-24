@@ -2,8 +2,6 @@ import paramiko
 import logging
 import os
 import socket
-# Using Fabric for connections might be an option later, but Paramiko is fine for now.
-from fabric import Connection 
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -11,18 +9,17 @@ from typing import Dict, List, Optional, Tuple
 class ConnectionBackend:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        # Store active SSH connections, keyed by a unique connection_id
+        # Store active SSH connections
         self.connections = {}
         self.profiles_file = Path("config/ssh_connections.json")
         self.ensure_profiles_file_exists()
         
     def ensure_profiles_file_exists(self):
-        # Make sure the json file for storing connection profiles exists.
         if not self.profiles_file.exists():
             # Create the directory if it doesn't exist either.
             self.profiles_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.profiles_file, 'w') as f:
-                json.dump({}, f) # Initialize with an empty JSON object
+                json.dump({}, f) 
 
     def get_saved_connections(self) -> List[Dict]:
         try:
@@ -55,7 +52,7 @@ class ConnectionBackend:
                         profiles = json.load(f)
                     except json.JSONDecodeError: # Handle cases where the file might be corrupted
                         self.logger.warning("ssh_connections.json is corrupted, starting fresh.")
-                        profiles = {} # Reset to an empty dict if corrupted
+                        profiles = {} 
             
             profiles[profile_data['name']] = profile_data
             
@@ -111,8 +108,6 @@ class ConnectionBackend:
                             return None, False, f"Private key file not found: {private_key_path_str}"
                     else:
                         # Attempt to load the private key, trying various types.
-                        # This order is somewhat arbitrary but covers common key types.
-                        # Ed25519 is tried first as it's modern and secure.
                         private_key = paramiko.Ed25519Key.from_private_key_file(private_key_path_str, password=passphrase) if passphrase else paramiko.Ed25519Key.from_private_key_file(private_key_path_str)
                         try:
                             private_key = paramiko.RSAKey.from_private_key_file(private_key_path_str, password=passphrase)

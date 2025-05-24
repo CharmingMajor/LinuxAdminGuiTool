@@ -6,7 +6,7 @@ from PySide6.QtGui import QFont, QIcon
 import subprocess
 
 class UpdateManagerWidget(QWidget):
-    """Widget for managing system updates"""
+    """Manages system updates, local or remote."""
     
     def __init__(self, parent=None, remote=None):
         super().__init__(parent)
@@ -14,7 +14,6 @@ class UpdateManagerWidget(QWidget):
         self.setup_ui()
         
     def setup_ui(self):
-        """Set up the UI components"""
         layout = QVBoxLayout(self)
         
         info_group = QGroupBox("System Information")
@@ -74,7 +73,6 @@ class UpdateManagerWidget(QWidget):
         self.refresh_system_info()
         
     def refresh_system_info(self):
-        """Refresh system information"""
         os_name = "Unknown"
         kernel = "Unknown"
         last_update = "Unknown"
@@ -86,6 +84,7 @@ class UpdateManagerWidget(QWidget):
                 stdout, _ = self.remote.execute_command("uname -r")
                 kernel = stdout.strip() if stdout else "Unknown"
                 
+                # Attempt to get last update time from dpkg (Debian-based) or rpm (RedHat-based)
                 stdout, _ = self.remote.execute_command("stat -c %y /var/lib/dpkg/status 2>/dev/null || stat -c %y /var/lib/rpm/Packages 2>/dev/null")
                 last_update = stdout.split('.')[0] if stdout else "Unknown"
             else:
@@ -98,24 +97,23 @@ class UpdateManagerWidget(QWidget):
                 kernel = subprocess.check_output(['uname', '-r'], text=True).strip()
                 
                 try:
+                    # Check for Debian-based systems first
                     last_update = subprocess.check_output(
                         ['stat', '-c', '%y', '/var/lib/dpkg/status'],
                         text=True
                     ).split('.')[0]
                 except subprocess.CalledProcessError:
                     try:
+                        # Fallback to RedHat-based systems
                         last_update = subprocess.check_output(
                             ['stat', '-c', '%y', '/var/lib/rpm/Packages'],
                             text=True
                         ).split('.')[0]
                     except subprocess.CalledProcessError:
-                        # last_update remains "Unknown"
                         pass
                     except FileNotFoundError:
-                        # stat or Packages file not found
                         pass
                 except FileNotFoundError:
-                    # stat or status file not found
                     pass
             
             self.os_info.setText(f"Operating System: {os_name}")
@@ -125,16 +123,16 @@ class UpdateManagerWidget(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to get system info: {str(e)}")
             
-    def check_updates(self):    # sourcery skip: low-code-quality
-        """Check for available system updates"""
+    def check_updates(self):
         self.update_table.setRowCount(0)
         self.output_text.clear()
         self.output_text.append("Checking for updates...")
 
         try:
             if self.remote:
+                # Check for apt updates remotely
                 stdout, stderr = self.remote.execute_command("apt list --upgradable 2>/dev/null")
-                if not stderr:
+                if not stderr: # If apt command succeeded or no stderr output specific to 'command not found'
                     for line in stdout.splitlines()[1:]:
                         parts = line.split('/')
                         if len(parts) >= 2:
@@ -150,14 +148,15 @@ class UpdateManagerWidget(QWidget):
                                 self.update_table.setItem(row, 1, QTableWidgetItem(current_ver))
                                 self.update_table.setItem(row, 2, QTableWidgetItem(new_ver))
                 else:
+                    # If apt fails or not available, try dnf remotely
                     stdout, stderr = self.remote.execute_command("dnf check-update")
-                    if not stderr:
+                    if not stderr: # Assuming dnf command success if no stderr
                         for line in stdout.splitlines()[1:]:
                             parts = line.split()
                             if len(parts) >= 3:
                                 package = parts[0]
                                 new_ver = parts[1]
-                                current_ver = parts[2]
+                                current_ver = parts[2] # dnf output format is different
 
                                 row = self.update_table.rowCount()
                                 self.update_table.insertRow(row)
@@ -165,6 +164,7 @@ class UpdateManagerWidget(QWidget):
                                 self.update_table.setItem(row, 1, QTableWidgetItem(current_ver))
                                 self.update_table.setItem(row, 2, QTableWidgetItem(new_ver))
             else:
+                # Local update check, try apt first
                 try:
                     output = subprocess.check_output(['apt', 'list', '--upgradable'], text=True)
                     for line in output.splitlines()[1:]:
@@ -182,14 +182,22 @@ class UpdateManagerWidget(QWidget):
                                 self.update_table.setItem(row, 1, QTableWidgetItem(current_ver))
                                 self.update_table.setItem(row, 2, QTableWidgetItem(new_ver))
                 except (subprocess.CalledProcessError, FileNotFoundError):
+                    # If apt fails or not found, try dnf
                     try:
                         output = subprocess.check_output(['dnf', 'check-update'], text=True)
-                        for line in output.splitlines()[1:]:
+                        # Skip header line of dnf output if present
+                        lines_to_parse = stdout.splitlines()
+                        if lines_to_parse and "Last metadata expiration check:" in lines_to_parse[0]:
+                            lines_to_parse = lines_to_parse[1:]
+                        
+                        for line in lines_to_parse: 
                             parts = line.split()
-                            if len(parts) >= 3:
+                            if len(parts) >= 3: # package, new_ver, repo, (optional: current_ver if obsoleting)
                                 package = parts[0]
                                 new_ver = parts[1]
-                                current_ver = parts[2]
+                                # current_ver might not be directly available or might be in a different format
+                                # For simplicity, we might leave current_ver blank or try to infer if needed
+                                current_ver = "N/A" # Placeholder
 
                                 row = self.update_table.rowCount()
                                 self.update_table.insertRow(row)
@@ -210,8 +218,7 @@ class UpdateManagerWidget(QWidget):
         except Exception as e:
             self.output_text.append(f"Error checking for updates: {str(e)}")
             
-    def install_updates(self):    # sourcery skip: low-code-quality
-        """Install available system updates"""
+    def install_updates(self):
         if self.update_table.rowCount() == 0:
             QMessageBox.information(self, "No Updates", "No updates available to install.")
             return
@@ -225,18 +232,19 @@ class UpdateManagerWidget(QWidget):
 
         if reply == QMessageBox.Yes:
             self.progress_bar.setVisible(True)
-            self.progress_bar.setRange(0, 0)
+            self.progress_bar.setRange(0, 0) # Indeterminate progress
             self.output_text.clear()
             self.output_text.append("Installing updates...")
 
             try:
                 if self.remote:
-                    # Prioritize apt, then dnf for remote execution
+                    # Remote execution: Prioritize apt, then dnf
                     stdout_apt, stderr_apt = self.remote.execute_command("apt-get update && apt-get upgrade -y")
+                    # Check if apt command indicates success or no updates
                     if not stderr_apt or "0 upgraded, 0 newly installed, 0 to remove" in stdout_apt.lower() or "is already the newest version" in stdout_apt.lower():
                         self._append_output_and_errors(stdout_apt, stderr_apt, "apt")
                     else:
-                        # If apt fails or has significant errors, try dnf
+                        # If apt had issues (other than no updates), try dnf
                         stdout_dnf, stderr_dnf = self.remote.execute_command("dnf upgrade -y")
                         self._append_output_and_errors(stdout_dnf, stderr_dnf, "dnf")
                 else:
@@ -254,7 +262,7 @@ class UpdateManagerWidget(QWidget):
                         try:
                             # If apt fails, try dnf
                             output = subprocess.run(
-                                ['dnf', 'upgrade', '-y'],
+                                ['dnf', 'upgrade', '-y'], # dnf upgrade automatically runs a makecache
                                 check=True,
                                 capture_output=True,
                                 text=True
@@ -262,11 +270,9 @@ class UpdateManagerWidget(QWidget):
                             self._append_output_and_errors(output.stdout, output.stderr, "dnf")
                         except subprocess.CalledProcessError as e_dnf:
                             self.output_text.append(f"Failed with apt: {e_apt.stderr}\nFailed with dnf: {e_dnf.stderr}")
-# sourcery skip: raise-specific-error
                             raise Exception("Both apt and dnf failed for local update.") from e_dnf
                         except FileNotFoundError as e:
                             self.output_text.append(f"Failed with apt: {e_apt.stderr}\ndnf command not found.")
-# sourcery skip: raise-specific-error
                             raise Exception("apt failed and dnf not found for local update.") from e
                     except FileNotFoundError:
                          # apt not found, try dnf
@@ -280,30 +286,29 @@ class UpdateManagerWidget(QWidget):
                             self._append_output_and_errors(output.stdout, output.stderr, "dnf")
                         except subprocess.CalledProcessError as e_dnf:
                             self.output_text.append(f"apt command not found.\nFailed with dnf: {e_dnf.stderr}")
-# sourcery skip: raise-specific-error
                             raise Exception("apt not found and dnf failed for local update.") from e_dnf
                         except FileNotFoundError as e:
-# sourcery skip: raise-specific-error
                             raise Exception("Neither apt nor dnf command was found locally.") from e
 
                 self.output_text.append("Update installation completed.")
                 self.progress_bar.setVisible(False)
                 self.refresh_system_info()
-                self.check_updates()
+                self.check_updates() # Refresh available updates list
 
             except Exception as e:
                 self.output_text.append(f"Error installing updates: {str(e)}")
                 self.progress_bar.setVisible(False)
 
     def _append_output_and_errors(self, stdout, stderr, pkg_manager_name):
-        """Helper to append command output and errors to the text area."""
         if stdout:
             self.output_text.append(f"--- {pkg_manager_name} output ---")
             self.output_text.append(stdout.strip())
+        
+        # Filter out dnf's "Last metadata expiration check" message from stderr
         if stderr and pkg_manager_name == "dnf":
             lines = stderr.splitlines()
             filtered_stderr = [line for line in lines if not line.startswith("Last metadata expiration check:")]
-            stderr = "\n".join(filtered_stderr).strip()
+            stderr = "\\n".join(filtered_stderr).strip()
 
         if stderr: # If stderr still has content after filtering
             self.output_text.append(f"--- {pkg_manager_name} errors/warnings ---")

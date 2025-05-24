@@ -21,6 +21,7 @@ class BackupConfigDialog(QDialog):
         self.setup_ui()
         
     def _create_path_input_row(self, label_text: str) -> tuple[QLineEdit, QHBoxLayout]:
+        # Helper method to create a path input field with a browse button
         line_edit = QLineEdit()
         browse_btn = QPushButton("Browse")
         browse_btn.clicked.connect(lambda: self.browse_path(line_edit))
@@ -70,6 +71,7 @@ class BackupManagerWidget(QWidget):
     
     def __init__(self, parent=None, remote=None):
         super().__init__(parent)
+        # Remote parameter allows managing backups on remote systems
         self.remote = remote
         self.theme_manager = ThemeManager()
         self.theme_manager.theme_changed.connect(self.apply_theme)
@@ -85,6 +87,7 @@ class BackupManagerWidget(QWidget):
         backups_group = QGroupBox("Backup History")
         backups_layout = QVBoxLayout(backups_group)
         
+        # Table displays backup history with date, type, source, destination, and status
         self.backup_table = QTableWidget()
         self.backup_table.setColumnCount(5)
         self.backup_table.setHorizontalHeaderLabels([
@@ -135,6 +138,7 @@ class BackupManagerWidget(QWidget):
         """Load backup history"""
         try:
             if self.remote:
+                # For remote systems, fetch backup log via command execution
                 stdout, _ = self.remote.execute_command("cat /var/log/backup.log 2>/dev/null")
                 backups = json.loads(stdout) if stdout else []
             else:
@@ -201,6 +205,7 @@ class BackupManagerWidget(QWidget):
             self._extracted_from_restore_backup_14()
             self.output_text.append(f"Creating {backup_type.lower()} backup...")
 
+            # Generate unique backup name based on current date/time
             date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             archive_name = f"backup_{date}.tar.gz"
             snapshot_file = f"{dest}/snapshot_{date}" if backup_type == "Incremental" else None
@@ -239,9 +244,11 @@ class BackupManagerWidget(QWidget):
     def _execute_tar_backup(self, source_path: str, dest_path: str, archive_name: str, backup_type: str, snapshot_file: str | None):
         """Helper function to construct and execute the tar command for backup."""
         if self.remote:
+            # For remote systems, execute tar command over SSH or similar connection
             self.remote.execute_command(f"mkdir -p {dest_path}")
             full_archive_path = f"{dest_path}/{archive_name}"
             cmd_parts = ["tar", "czf", full_archive_path]
+            # Add incremental backup option if needed
             if backup_type == "Incremental" and snapshot_file:
                 cmd_parts.extend([f"--listed-incremental={snapshot_file}"])
             cmd_parts.extend(["-C", source_path, "."])
@@ -250,6 +257,7 @@ class BackupManagerWidget(QWidget):
             if stderr:
                 raise RuntimeError(f"Remote tar command failed: {stderr}")
         else:
+            # For local system, run tar command directly
             os.makedirs(dest_path, exist_ok=True)
             cmd_parts = ["tar", "czf", os.path.join(dest_path, archive_name)]
             if backup_type == "Incremental" and snapshot_file:
@@ -277,6 +285,7 @@ class BackupManagerWidget(QWidget):
         self.output_text.append(f"Restoring from {backup_file} to {dest_path}...")
 
         try:
+            # Extract the tar archive to the specified destination
             if self.remote:
                 self.remote.execute_command(f"mkdir -p {dest_path}")
                 cmd = f"tar xzf {backup_file} -C {dest_path}"
@@ -297,6 +306,7 @@ class BackupManagerWidget(QWidget):
             self.progress_bar.setVisible(False)
 
     def _start_backup_restore_process(self):
+        # Initialize UI for backup/restore operation
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)  # Indeterminate progress
         self.output_text.clear()
@@ -319,6 +329,7 @@ class BackupManagerWidget(QWidget):
         
         if reply == QMessageBox.Yes:
             try:
+                # Delete the backup file and update the log
                 if self.remote:
                     stdout, stderr = self.remote.execute_command(f"rm {backup_file}")
                     if stderr:
@@ -347,15 +358,14 @@ class BackupManagerWidget(QWidget):
             else:
                 backups = []
                         
+        # Filter out the deleted backup from the log
         backups = [b for b in backups if b.get("destination") != deleted_backup_file]
         
         if self.remote:
             log_content = json.dumps(backups)
-            # Ensure log_content is properly escaped for the echo command if it contains special characters
-            # For simplicity, assuming log_content will be simple JSON without needing complex shell escaping here.
             self.remote.execute_command(f"echo '{log_content}' | sudo tee /var/log/backup.log")
         else:
-            backup_log_path = Path("/var/log/backup.log") # Re-define to ensure it's used for writing
+            backup_log_path = Path("/var/log/backup.log") 
             with open(backup_log_path, "w") as f:
                 json.dump(backups, f)
 

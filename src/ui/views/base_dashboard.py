@@ -2,8 +2,6 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QStackedWidget, QMessageBox, QScrollArea, QSizePolicy, QGridLayout, QFrame)
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QFont, QIcon
-import psutil
-import time
 from pathlib import Path
 from src.ui.utils.theme_manager import ThemeManager
 

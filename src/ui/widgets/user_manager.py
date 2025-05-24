@@ -11,12 +11,14 @@ from src.utils.remote_connection import RemoteConnection
 from src.backend.senior_dashboard_backend import SeniorDashboardBackend
 from src.backend.junior_backend import JuniorBackend, JUNIOR_MANAGEABLE_GROUPS
 
+# Manages user and group operations within the UI.
 class UserManagerWidget(QWidget):
     def __init__(self, remote: RemoteConnection, is_senior: bool, parent=None):
         super().__init__(parent)
         self.remote = remote
         self.is_senior = is_senior
 
+        # Initialize backend based on user role (senior or junior)
         if self.is_senior:
             self.backend = SeniorDashboardBackend(remote)
         else:
@@ -26,6 +28,7 @@ class UserManagerWidget(QWidget):
         self._setup_ui()
         self.load_users_and_groups() # Load initial data
 
+    # Sets up the main UI layout and widgets.
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
         
@@ -132,6 +135,7 @@ class UserManagerWidget(QWidget):
         self._load_users()
         self._load_groups()
 
+    # Fetches and displays user data in the users table.
     def _load_users(self):
         self.users_table.setRowCount(0)
         try:
@@ -154,6 +158,7 @@ class UserManagerWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load users: {str(e)}")
 
+    # Fetches and displays group data in the groups table.
     def _load_groups(self):
         self.groups_table.setRowCount(0)
         try:
@@ -177,6 +182,7 @@ class UserManagerWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to load groups: {str(e)}")
 
+    # Shows a dialog for adding a new user.
     def _show_add_user_dialog(self):
         dialog = AddUserDialog(is_senior=self.is_senior, parent=self)
         if dialog.exec() == QDialog.Accepted:
@@ -214,6 +220,7 @@ class UserManagerWidget(QWidget):
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
                 # self.load_users_and_groups() # Optionally refresh list even on unexpected error
 
+    # Shows a dialog for adding a new group.
     def _show_add_group_dialog(self):
         dialog = AddGroupDialog(parent=self)
         if dialog.exec() == QDialog.Accepted:
@@ -243,6 +250,7 @@ class UserManagerWidget(QWidget):
                 self._display_output(f"Error: {str(e)}")
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
+    # Handles deletion of the selected user. (Senior admin only)
     def _delete_selected_user(self):
         if not self.is_senior:
             self._display_output("Permission denied. You are not allowed to delete users.")
@@ -282,6 +290,7 @@ class UserManagerWidget(QWidget):
                 self._display_output(f"Error: {str(e)}")
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
+    # Handles modification of the selected user. (Senior admin only)
     def _modify_selected_user(self):
         if not self.is_senior:
             self._display_output("Permission denied. You are not allowed to modify users.")
@@ -349,6 +358,7 @@ class UserManagerWidget(QWidget):
                 self._display_output(f"Error: {str(e)}")
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
+    # Handles resetting the password for the selected user.
     def _reset_user_password(self):
         selected_items = self.users_table.selectedItems()
         if not selected_items:
@@ -378,6 +388,7 @@ class UserManagerWidget(QWidget):
                 self._display_output(f"Error: {str(e)}")
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
+    # Handles deletion of the selected group. (Senior admin only)
     def _delete_selected_group(self):
         if not self.is_senior:
             self._display_output("Permission denied. You are not allowed to delete groups.")
@@ -410,6 +421,7 @@ class UserManagerWidget(QWidget):
                 self._display_output(f"Error: {str(e)}")
                 QMessageBox.critical(self, "Error", f"An error occurred: {str(e)}")
 
+    # Handles modification of the selected group. (Senior admin only)
     def _modify_selected_group(self):
         if not self.is_senior:
             self._display_output("Permission denied. You are not allowed to modify groups.")
@@ -459,7 +471,8 @@ class UserManagerWidget(QWidget):
         self.output_console.append(text)
         self.output_console.ensureCursorVisible()
 
-# --- Dialogs --- 
+
+# Dialog for adding a new user, with fields varying by admin role.
 class AddUserDialog(QDialog):
     def __init__(self, is_senior: bool, parent=None):
         super().__init__(parent)
@@ -605,6 +618,7 @@ class AddUserDialog(QDialog):
         
         return data 
 
+# Dialog for modifying an existing user's attributes. (Senior admin only)
 class ModifyUserDialog(QDialog):
     def __init__(self, username, current_shell, current_comment, parent=None):
         super().__init__(parent)
@@ -768,6 +782,7 @@ class ModifyUserDialog(QDialog):
             
         return data
 
+# Dialog for modifying an existing group's attributes. (Senior admin only)
 class ModifyGroupDialog(QDialog):
     def __init__(self, group_name, current_gid, parent=None):
         super().__init__(parent)
@@ -850,6 +865,7 @@ class ModifyGroupDialog(QDialog):
             
         return data 
 
+# Dialog for adding a new group.
 class AddGroupDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)

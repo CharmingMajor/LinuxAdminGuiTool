@@ -1,17 +1,13 @@
 from src.utils.remote_connection import RemoteConnection
-import subprocess
 import logging
 import re
 from datetime import datetime
 import os
-import json
 from typing import Dict, List, Tuple, Optional
 from src.backend.database import DatabaseManager
 
-# Only allow juniors to manage these groups - anything else might give them
-# too much power. Definitely keep them away from sudo/admin groups.
+# Only allow juniors to manage these groups 
 JUNIOR_MANAGEABLE_GROUPS = ["users", "developers", "editors", "trainees", "guest"]
-# These users are off-limits - don't want juniors resetting admin passwords!
 JUNIOR_NON_RESETTABLE_USERS = ["root", "admin", "senior"]
 
 class JuniorBackend:
@@ -38,16 +34,15 @@ class JuniorBackend:
             current_user: Username of the current junior admin
         """
         self.remote = remote
-        self.db_manager = db_manager if db_manager else DatabaseManager() # Initialize if not provided
+        self.db_manager = db_manager if db_manager else DatabaseManager() 
         self.logger = logger if logger else logging.getLogger(__name__)
         self.current_user = current_user
         self.default_shell = "/bin/bash"
         
-        # Commands juniors can run - anything else would be too dangerous
-        # Keep this list minimal to prevent privilege escalation
+        # Commands juniors can run 
         self.allowed_commands = [
             "top", "ls", "df -h", "free -m",
-            "cat /etc/passwd", "cat /etc/group", # For viewing, not modification via direct command
+            "cat /etc/passwd", "cat /etc/group", 
             "ls -l /home", "who", "whoami", "ps aux", "hostname",
             "cat /etc/os-release", "uname -r", "uptime -p",
             "ip addr", "netstat -tuln",
@@ -112,24 +107,19 @@ class JuniorBackend:
                 if line.strip() and not line.startswith("#"):
                     parts = line.split(":")
                     if len(parts) >= 7:
-                        # Basic filtering for Junior Admin: 
-                        # - Optionally hide very low UID system users (except root if it were to be listed)
-                        # - Hide users with nologin shells if they are not typical users
                         try:
                             uid = int(parts[2])
-                            # For juniors, only show regular users (UID >= 1000)
-                            # This hides system accounts which juniors shouldn't modify
-                            if uid < 1000 and uid !=0: # Example: keep root if it appears, filter others < 1000
+                            if uid < 1000 and uid !=0: 
                                 if parts[6] in ["/sbin/nologin", "/usr/sbin/nologin", "/bin/false"]:
                                     continue
                         except ValueError:
-                            pass # If UID is not an int, include for now
+                            pass 
 
                         users.append({
                             'username': parts[0],
                             'uid': parts[2],
                             'gid': parts[3],
-                            'comment': parts[4], # GECOS field
+                            'comment': parts[4], 
                             'home': parts[5],
                             'shell': parts[6]
                         })
@@ -160,12 +150,10 @@ class JuniorBackend:
                 if line.strip() and not line.startswith("#"):
                     parts = line.split(":")
                     if len(parts) >= 4:
-                        # Junior admins can see all groups, but can only
-                        # modify or assign users to groups in JUNIOR_MANAGEABLE_GROUPS
                         groups.append({
                             'name': parts[0],
                             'gid': parts[2],
-                            'members': parts[3] # Comma-separated string of members
+                            'members': parts[3] 
                         })
             return groups, None
         except Exception as e:
@@ -211,19 +199,17 @@ class JuniorBackend:
             self.logger.error("Current user not set, cannot determine home directory for permission check.")
             return False, "Current user not set, cannot determine home directory."
         
-        # Get user's home directory - junior admins can only modify files here
+
         user_home_dir = f"/home/{self.current_user}"
 
-        # Resolve the absolute path on the remote system for security
-        # This prevents path traversal attacks
+  
         is_absolute_check_success, abs_path_output, abs_path_error = self.remote.execute_command(f"realpath -m {path}")
         if not is_absolute_check_success:
-            # Fallback or if path is relative to home, prepend home dir
             if not path.startswith("/"):
                 resolved_path = os.path.join(user_home_dir, path)
-            else: # Absolute path but realpath failed, could be an issue
+            else: 
                 self.logger.warning(f"Could not resolve path {path} with realpath: {abs_path_error}")
-                resolved_path = path # Use original path if realpath fails and it looked absolute
+                resolved_path = path 
         else:
             resolved_path = abs_path_output.strip()
 
@@ -527,7 +513,7 @@ class JuniorBackend:
                 description=description
             )
             
-            # Also add to task history
+            # add to task history
             if success:
                 self.db_manager.add_task_history(
                     user=self.current_user,

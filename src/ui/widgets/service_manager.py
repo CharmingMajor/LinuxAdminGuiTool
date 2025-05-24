@@ -11,7 +11,7 @@ class ServiceManagerWidget(QWidget):
     
     def __init__(self, parent=None, remote=None):
         super().__init__(parent)
-        self.remote = remote
+        self.remote = remote  # For remote system management
         self.backend = SeniorDashboardBackend(remote)
         self.setup_ui()
         
@@ -19,7 +19,7 @@ class ServiceManagerWidget(QWidget):
         """Set up the UI components"""
         layout = QVBoxLayout(self)
         
-        # Services management
+        # ---- Services management section ----
         services_group = QGroupBox("System Services")
         services_layout = QVBoxLayout(services_group)
         
@@ -39,7 +39,7 @@ class ServiceManagerWidget(QWidget):
         
         layout.addWidget(services_group)
         
-        # Firewall management
+        # ---- Firewall management section ----
         firewall_group = QGroupBox("Firewall Management")
         firewall_layout = QVBoxLayout(firewall_group)
         
@@ -55,7 +55,7 @@ class ServiceManagerWidget(QWidget):
         
         firewall_layout.addWidget(self.firewall_table)
         
-        # Firewall controls
+        # Controls for adding/removing firewall rules
         controls_layout = QHBoxLayout()
         
         self.rule_input = QLineEdit()
@@ -74,7 +74,7 @@ class ServiceManagerWidget(QWidget):
         
         layout.addWidget(firewall_group)
         
-        # Terminal output console
+        # ---- Terminal output console section ----
         output_group = QGroupBox("Command Output")
         output_layout = QVBoxLayout(output_group)
         self.output_console = QTextEdit()
@@ -84,7 +84,7 @@ class ServiceManagerWidget(QWidget):
         output_layout.addWidget(self.output_console)
         layout.addWidget(output_group)
         
-        # Initial load of services and firewall status
+        # Load initial data
         self.refresh_services()
         self.refresh_firewall_status()
         
@@ -93,7 +93,7 @@ class ServiceManagerWidget(QWidget):
         try:
             services = self.backend.get_active_services()
             
-            self.services_table.setRowCount(0)
+            self.services_table.setRowCount(0)  # Clear existing rows
             
             for service in services:
                 row_position = self.services_table.rowCount()
@@ -101,7 +101,7 @@ class ServiceManagerWidget(QWidget):
                 
                 # Add service name
                 name_item = QTableWidgetItem(service["name"])
-                name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)
+                name_item.setFlags(name_item.flags() & ~Qt.ItemIsEditable)  # Make non-editable
                 self.services_table.setItem(row_position, 0, name_item)
                 
                 # Add status
@@ -109,7 +109,7 @@ class ServiceManagerWidget(QWidget):
                 status_item.setFlags(status_item.flags() & ~Qt.ItemIsEditable)
                 self.services_table.setItem(row_position, 1, status_item)
                 
-                # Add action buttons
+                # Add action buttons (restart and stop)
                 action_widget = QWidget()
                 action_layout = QHBoxLayout(action_widget)
                 action_layout.setContentsMargins(0, 0, 0, 0)
@@ -136,13 +136,14 @@ class ServiceManagerWidget(QWidget):
             cmd = f"sudo systemctl restart {service_name}"
             self._display_output(f"$ {cmd}")
             
+            # Execute command and get results
             success, output = self.backend.execute_admin_command(cmd, use_sudo=True)
             
             self._display_output(output)
             
             if success:
                 QMessageBox.information(self, "Success", f"Service {service_name} restarted successfully")
-                self.refresh_services()
+                self.refresh_services()  # Update the services list
                 
         except Exception as e:
             self._display_output(f"Error restarting service: {str(e)}")
@@ -169,18 +170,20 @@ class ServiceManagerWidget(QWidget):
     def refresh_firewall_status(self):
         """Refresh the firewall status and rules"""
         try:
+            # Get firewall status and rules from backend
             success, status, rules = self.backend.get_firewall_status()
             
             if success:
                 self.firewall_status_label.setText(f"Firewall Status: {status}")
                 
+                # Clear and populate the rules table
                 self.firewall_table.setRowCount(0)
                 
                 for rule in rules:
                     row_position = self.firewall_table.rowCount()
                     self.firewall_table.insertRow(row_position)
                     
-                    # Add rule details
+                    # Add rule details to table
                     self.firewall_table.setItem(row_position, 0, QTableWidgetItem(rule["to"]))
                     self.firewall_table.setItem(row_position, 1, QTableWidgetItem(rule["action"]))
                     self.firewall_table.setItem(row_position, 2, QTableWidgetItem(rule["from"]))
@@ -202,8 +205,10 @@ class ServiceManagerWidget(QWidget):
             return
         
         try:
+            # Show command in console
             self._display_output(f"$ sudo ufw {rule}")
             
+            # Execute command using backend
             success, message = self.backend.add_firewall_rule(rule)
             
             self._display_output(message)
@@ -211,7 +216,7 @@ class ServiceManagerWidget(QWidget):
             if success:
                 QMessageBox.information(self, "Success", "Firewall rule added successfully")
                 self.rule_input.clear()
-                self.refresh_firewall_status()
+                self.refresh_firewall_status()  # Update firewall status and rules display
                 
         except Exception as e:
             self._display_output(f"Error adding firewall rule: {str(e)}")
@@ -244,4 +249,4 @@ class ServiceManagerWidget(QWidget):
     def _display_output(self, text):
         """Display text in the output console with appropriate formatting"""
         self.output_console.append(text)
-        self.output_console.ensureCursorVisible() 
+        self.output_console.ensureCursorVisible()  # Ensure the latest text is visible 

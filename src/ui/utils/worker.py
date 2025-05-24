@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import QObject, Signal
 
 class Worker(QObject):
     finished = Signal(object)

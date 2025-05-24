@@ -2,7 +2,6 @@ from src.utils.remote_connection import RemoteConnection
 import logging
 from typing import Optional, Dict, List, Tuple
 import os
-import json
 from datetime import datetime
 from src.backend.database import DatabaseManager
 import re
@@ -14,7 +13,7 @@ class SeniorDashboardBackend:
         self.remote = remote
         self.logger = logging.getLogger(__name__)
         self.db_manager = DatabaseManager()
-        self.current_user = current_user  # Use passed username
+        self.current_user = current_user  # Store username for logging
         
     def get_system_info(self) -> Dict[str, str]:
         """Get basic system information"""
@@ -27,7 +26,7 @@ class SeniorDashboardBackend:
             stdout, _ = self.remote.execute_command("hostname")
             info['hostname'] = stdout.strip()
             
-            # Get OS info
+            # Get OS information
             stdout, _ = self.remote.execute_command("cat /etc/os-release | grep PRETTY_NAME")
             if stdout:
                 info['os'] = stdout.split('=')[1].strip().strip('"')
@@ -50,19 +49,19 @@ class SeniorDashboardBackend:
         try:
             usage = {}
             
-            # Get CPU usage
+            # CPU usage percentage
             stdout, _ = self.remote.execute_command(
                 "top -bn1 | grep 'Cpu(s)' | awk '{print $2}'"
             )
             usage['cpu'] = float(stdout.strip())
             
-            # Get memory usage
+            # Memory usage percentage
             stdout, _ = self.remote.execute_command(
                 "free | grep Mem | awk '{print $3/$2 * 100.0}'"
             )
             usage['memory'] = float(stdout.strip())
             
-            # Get disk usage
+            # Disk usage percentage
             stdout, _ = self.remote.execute_command(
                 "df / | tail -1 | awk '{print $5}' | sed 's/%//'"
             )
@@ -81,7 +80,7 @@ class SeniorDashboardBackend:
                 "systemctl list-units --type=service --state=running"
             )
             
-            for line in stdout.splitlines()[1:]:  # Skip header
+            for line in stdout.splitlines()[1:]:
                 parts = line.split()
                 if len(parts) >= 4:
                     services.append({
@@ -121,7 +120,7 @@ class SeniorDashboardBackend:
             # Create backup command based on type
             if backup_type == "full":
                 cmd = f"tar czf {full_path} --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/media --exclude=/mnt /"
-            else:  # incremental
+            else:  # incremental backup
                 snapshot = os.path.join(backup_path, f"snapshot_{date}")
                 cmd = f"tar czf {full_path} --listed-incremental={snapshot} --exclude=/proc --exclude=/sys --exclude=/dev --exclude=/run --exclude=/media --exclude=/mnt /"
             
@@ -144,10 +143,10 @@ class SeniorDashboardBackend:
     def update_system(self) -> Tuple[bool, str]:
         """Update system packages"""
         try:
-            # Try apt (Debian/Ubuntu)
+            # Try apt for Debian/Ubuntu
             success, output = self.execute_admin_command("apt-get update && apt-get upgrade -y", use_sudo=True)
             if not success:
-                # Try dnf (Red Hat/Fedora)
+                # Fall back to dnf for Red Hat/Fedora
                 success, output = self.execute_admin_command("dnf upgrade -y", use_sudo=True)
             return success, output
         except Exception as e:
@@ -172,7 +171,6 @@ class SeniorDashboardBackend:
             conn.commit()
             conn.close()
             
-            # Log the action
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="Report Status Updated",
@@ -184,7 +182,6 @@ class SeniorDashboardBackend:
             self.logger.error(f"Error updating report status: {str(e)}")
             return False
     
-    # Firewall Management (UFW specific for now)
     def get_firewall_status(self) -> Tuple[bool, str, List[Dict[str, str]]]:
         """Get UFW firewall status and rules."""
         try:
@@ -198,17 +195,13 @@ class SeniorDashboardBackend:
             for i, line in enumerate(lines):
                 if line.lower().startswith("status:"):
                     status_line = line.split(":")[1].strip()
-                elif line.strip() == "To                         Action      From": # Header for rules
-                    # Subsequent lines are rules
+                elif line.strip() == "To                         Action      From":  # Header for rules
+                    # Parse firewall rules
                     for rule_line in lines[i+2:]:
                         if not rule_line.strip() or rule_line.startswith("---"):
-                            continue # Skip empty lines or separators
+                            continue  # Skip empty lines or separators
                         
-                        # Pre-process to handle cases like 'ALLOW IN', 'DENY OUT' as a single action concept
-                        # by temporarily replacing the space, splitting, then restoring.
-                        # This helps if the primary split is by whitespace.
-                        # A more robust way might involve regex for the whole line.
-                        
+                        # Handle complex rule formats with space in action
                         temp_rule_line = rule_line.replace(" ALLOW IN ", " ALLOW_IN ") \
                                                .replace(" DENY IN ", " DENY_IN ") \
                                                .replace(" REJECT IN ", " REJECT_IN ") \
@@ -223,6 +216,7 @@ class SeniorDashboardBackend:
                         if not parts:
                             continue
 
+                        # Parse rule components
                         to_val = "N/A"
                         action_val = "N/A"
                         from_val = "N/A"
@@ -230,29 +224,22 @@ class SeniorDashboardBackend:
 
                         if len(parts) == 1:
                             to_val = parts[0]
-                            # action_val and from_val remain "N/A"
                         elif len(parts) == 2:
                             to_val = parts[0]
-                            action_val = parts[1].replace("_", " ") # Restore space if replaced
-                            # from_val remains "N/A"
+                            action_val = parts[1].replace("_", " ")
                         elif len(parts) >= 3:
                             to_val = parts[0]
-                            # Second part is likely the action (e.g., ALLOW, DENY, ALLOW_IN)
-                            action_val = parts[1].replace("_", " ") # Restore space if replaced
+                            action_val = parts[1].replace("_", " ")
 
-                            # If action was simple (e.g. ALLOW) and there's a third part,
-                            # it could be 'IN' or 'OUT' or the start of 'From'
                             if parts[1] in ["ALLOW", "DENY", "REJECT", "LIMIT"] and parts[2] in ["IN", "OUT"]:
                                 action_val = f"{parts[1]} {parts[2]}"
                                 if len(parts) >= 4:
                                     from_val = parts[3]
                                     details_val = ' '.join(parts[4:]) if len(parts) > 4 else ''
-                                # else: from_val remains "N/A" if rule is like 'ALLOW IN'
                             elif not action_val.endswith(" IN") and not action_val.endswith(" OUT"):
-                                # Action was simple (e.g. "ALLOW"), so parts[2] is 'From'
                                 from_val = parts[2]
                                 details_val = ' '.join(parts[3:]) if len(parts) > 3 else ''
-                            else: # Action was compound (e.g. ALLOW_IN), so parts[2] is 'From'
+                            else:
                                 from_val = parts[2]
                                 details_val = ' '.join(parts[3:]) if len(parts) > 3 else ''
                         
@@ -263,7 +250,7 @@ class SeniorDashboardBackend:
                             "details": details_val.strip()
                         }
                         rules.append(rule)
-                    break # Parsed rules, exit loop
+                    break
             return True, status_line, rules
         except Exception as e:
             self.logger.error(f"Error parsing firewall status: {str(e)}")
@@ -272,14 +259,11 @@ class SeniorDashboardBackend:
     def add_firewall_rule(self, rule: str) -> Tuple[bool, str]:
         """Add a UFW firewall rule (e.g., 'allow 22/tcp')."""
         try:
-            # Basic validation for common UFW rules
             if not re.match(r"^(allow|deny|reject|limit)\s+([0-9]{1,5}(/tcp|/udp)?|\w+)(\s+.*)?", rule.lower()):
                 return False, "Invalid rule format. Example: 'allow 22/tcp' or 'deny from 192.168.1.100'"
             
             success, output, error = self.remote.execute_command(f"sudo ufw {rule}")
             if success:
-                # UFW output for adding rules can vary, e.g. "Rule added", "Skipping adding existing rule"
-                # We consider it a success if the command itself succeeded.
                 self.db_manager.add_system_log(
                     user=self.current_user,
                     action="Firewall Rule Added",
@@ -295,7 +279,6 @@ class SeniorDashboardBackend:
     def delete_firewall_rule(self, rule: str) -> Tuple[bool, str]:
         """Delete a UFW firewall rule (e.g., 'allow 22/tcp')."""
         try:
-            # Basic validation similar to adding
             if not re.match(r"^(allow|deny|reject|limit)\s+([0-9]{1,5}(/tcp|/udp)?|\w+)(\s+.*)?", rule.lower()):
                 return False, "Invalid rule format for deletion. Provide the rule as it was added."
 
@@ -322,7 +305,7 @@ class SeniorDashboardBackend:
         if self.remote:
             self.remote.disconnect()
 
-    # User Management (Review for comprehensiveness for Senior Admin)
+    # User Management 
     def add_system_user(self, username: str, password: Optional[str] = None, groups: Optional[List[str]] = None, shell: Optional[str] = "/bin/bash", home_dir: Optional[str] = None, comment: Optional[str] = None, create_home: bool = True) -> Tuple[bool, str]:
         """
         Add a new system user.
@@ -330,6 +313,7 @@ class SeniorDashboardBackend:
         Simulates command execution and returns terminal-like output.
         """
         try:
+            # Build useradd command with options
             cmd_parts = ["sudo useradd"]
             if create_home:
                 cmd_parts.append("-m")
@@ -338,7 +322,7 @@ class SeniorDashboardBackend:
             if home_dir:
                 cmd_parts.append(f"-d {home_dir}")
             if comment:
-                # Ensure comment is quoted to handle spaces and special chars for the shell
+                # Escape quotes in comment
                 escaped_comment = comment.replace('"', '\\"')
                 cmd_parts.append(f'-c "{escaped_comment}"')
 
@@ -348,35 +332,28 @@ class SeniorDashboardBackend:
             cmd_parts.append(username)
             useradd_cmd = " ".join(cmd_parts)
 
+            # Execute the command
             useradd_output, useradd_error = self.remote.execute_command(useradd_cmd)
             
-            if useradd_error: # useradd command itself failed
+            if useradd_error: 
                 self.logger.error(f"useradd command failed for {username}: {useradd_error}")
                 return False, useradd_error
 
-            # If useradd command was successful (no error)
-            # useradd_output is often empty on success.
-            
+            # Set password if provided
             if password:
-                # Use chpasswd to set the password. This is generally safer than passwd command.
-                # Ensure username or password don't break the echo command structure.
-                # For simplicity, basic quoting. Production might need more robust escaping for complex passwords.
-                # However, RemoteConnection's paramiko usage might handle this well.
                 pw_cmd = f'echo "{username}:{password}" | sudo chpasswd'
                 pw_output, pw_error = self.remote.execute_command(pw_cmd)
                 
                 if pw_error:
                     self.logger.warning(f"User {username} created (useradd output: '{useradd_output}'), but failed to set password: {pw_error}")
-                    # User created, but password setting failed.
-                    # Return True because the user entity was created.
+
                     message = f"User '{username}' created."
                     if useradd_output:
                         message += f" useradd output: '{useradd_output.strip()}'."
                     message += f"\\nWARN: Password setting failed: {pw_error.strip()}"
                     return True, message
-                # else: password set successfully, pw_output is usually empty for chpasswd
 
-            # If we reach here, useradd was successful, and if password was provided, it was also set successfully.
+            # Log the action
             details_dict = {
                 'groups': groups,
                 'shell': shell,
@@ -389,7 +366,6 @@ class SeniorDashboardBackend:
                 action="System User Added",
                 details=f"Username: {username}, Command: {useradd_cmd}, Options: {details_dict}"
             )
-            # Return the direct output from useradd (typically empty on success)
             return True, useradd_output.strip()
 
         except Exception as e:
@@ -413,14 +389,13 @@ class SeniorDashboardBackend:
                     action="System User Deleted",
                     details=f"Username: {username}, Delete Home: {delete_home}"
                 )
-                # userdel is typically silent on success. Return actual output if any, otherwise empty string.
                 return True, output.strip() if output else ""
             else:
-                # Prepend command name to error for terminal-like feel, if not already present
+                
                 error_message = error.strip()
                 if not error_message.lower().startswith("userdel:"):
                     error_message = f"userdel: {error_message}"
-                if "does not exist" in error.lower(): # More specific internal handling is fine
+                if "does not exist" in error.lower(): 
                      return False, f"userdel: user '{username}' does not exist"
                 return False, error_message
         except Exception as e:
@@ -438,12 +413,13 @@ class SeniorDashboardBackend:
                              unlock_account: Optional[bool] = None,
                              primary_group: Optional[str] = None
                              ) -> Tuple[bool, str]:
-        """Modify an existing system user's attributes."""
+      
         try:
             actions_taken = []
             final_output_parts = []
             overall_success = True
 
+            # Update password if requested
             if new_password:
                 pw_cmd = f'echo "{username}:{new_password}" | sudo chpasswd'
                 output, error = self.remote.execute_command(pw_cmd)
@@ -454,6 +430,7 @@ class SeniorDashboardBackend:
                     overall_success = False
                     final_output_parts.append(f"Password update failed: {error}")
             
+            # Prepare usermod options
             usermod_options = []
             if primary_group:
                 usermod_options.append(f"-g {primary_group}")
@@ -469,6 +446,7 @@ class SeniorDashboardBackend:
             if new_comment is not None:
                 usermod_options.append(f"-c \"{new_comment}\"")
 
+            # Execute usermod if we have options
             if usermod_options:
                 cmd = f"sudo usermod {' '.join(usermod_options)} {username}"
                 output, error = self.remote.execute_command(cmd)
@@ -479,7 +457,7 @@ class SeniorDashboardBackend:
                     overall_success = False
                     final_output_parts.append(f"Usermod failed: {error}")
             
-            # Account locking/unlocking (equivalent to passwd -l/-u)
+            # Lock account if requested
             if lock_account is True:
                 lock_cmd = f"sudo passwd -l {username}"
                 output, error = self.remote.execute_command(lock_cmd)
@@ -490,6 +468,7 @@ class SeniorDashboardBackend:
                     overall_success = False
                     final_output_parts.append(f"Account locking failed: {error}")
                     
+            # Unlock account if requested
             if unlock_account is True:
                 unlock_cmd = f"sudo passwd -u {username}"
                 output, error = self.remote.execute_command(unlock_cmd)
@@ -500,7 +479,7 @@ class SeniorDashboardBackend:
                     overall_success = False
                     final_output_parts.append(f"Account unlocking failed: {error}")
             
-            # Process results
+            # Handle results
             if overall_success and actions_taken:
                 self.db_manager.add_system_log(
                     user=self.current_user,
@@ -508,17 +487,13 @@ class SeniorDashboardBackend:
                     details=f"Username: {username}, Actions: {', '.join(actions_taken)}"
                 )
                 
-                # If there was actual output from any command, return it.
-                # Otherwise, for silent successful commands, return an empty string.
+               
                 if final_output_parts:
                     return True, "\n".join(final_output_parts).strip()
-                return True, "" # Silent success
-            elif actions_taken: # Implies overall_success is False
-                # Prepend command name (usermod, passwd) to errors if not already there.
-                # This part can be tricky as final_output_parts mixes success and error messages from different commands.
-                # For now, rely on the fact that individual command calls within this func should already format their errors.
+                return True, ""  # Silent success
+            elif actions_taken: 
                 return False, f"Some user modifications failed. Details:\n{'\n'.join(final_output_parts).strip()}"
-            else: # No actions attempted
+            else:  # No actions attempted
                 return False, "No modifications specified for user."
         except Exception as e:
             self.logger.error(f"Error modifying system user {username}: {str(e)}")
@@ -532,38 +507,31 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
 
         try:
-            # Check if user exists
             check_cmd = f"id -u {username}"
             _, check_error = self.remote.execute_command(check_cmd)
             if check_error:
-                # Simulate passwd command failure for non-existent user
                 simulated_output = f"$ passwd {username}\\n"
                 simulated_output += f"passwd: user '{username}' does not exist"
                 return False, simulated_output
 
-            # Simulate the initial part of passwd command
             simulated_output = f"$ passwd {username}\\n"
-            simulated_output += "Enter new UNIX password: ********\\n" # GUI will show asterisks
-            simulated_output += "Retype new UNIX password: ********\\n" # GUI will show asterisks
+            simulated_output += "Enter new UNIX password: ********\\n"
+            simulated_output += "Retype new UNIX password: ********\\n"
 
-            # Actual password change using chpasswd (non-interactive)
             pw_cmd = f'echo "{username}:{new_password}" | sudo chpasswd'
             chpasswd_output, chpasswd_error = self.remote.execute_command(pw_cmd)
 
             if chpasswd_error:
                 self.logger.error(f"Error resetting password for {username} using chpasswd: {chpasswd_error}")
-                # Append chpasswd error to the simulated output
                 simulated_output += f"passwd: password change failed: {chpasswd_error}"
                 return False, simulated_output
             
-            # Log the action
             self.db_manager.add_system_log(
-                user=self.current_user, # Assuming self.current_user is the admin performing the action
+                user=self.current_user,
                 action="User Password Reset",
                 details=f"Password reset for user: {username}"
             )
             
-            # Simulate successful passwd output
             simulated_output += "passwd: password updated successfully"
             return True, simulated_output
 
@@ -575,6 +543,7 @@ class SeniorDashboardBackend:
     def add_system_group(self, group_name: str, gid: Optional[str] = None) -> Tuple[bool, str]:
         """Add a new system group."""
         try:
+            # Build groupadd command
             cmd = "sudo groupadd"
             if gid:
                 cmd += f" -g {gid}"
@@ -589,14 +558,11 @@ class SeniorDashboardBackend:
                     action="System Group Added",
                     details=f"Group Name: {group_name}, GID: {gid if gid else 'default'}"
                 )
-                # groupadd is silent on success. Return actual output if any, otherwise empty string.
                 return True, output.strip() if output else ""
             else:
                 error_message = error.strip()
-                # Prepend command name to error for terminal-like feel
                 if not error_message.lower().startswith("groupadd:"):
                     error_message = f"groupadd: {error_message}"
-                # Specific check for already exists can remain for internal logic, but error message is now formatted
                 if "already exists" in error.lower():
                     return False, f"groupadd: group '{group_name}' already exists"
                 return False, error_message
@@ -616,25 +582,19 @@ class SeniorDashboardBackend:
                     action="System Group Deleted",
                     details=f"Group Name: {group_name}"
                 )
-                # groupdel is silent on success. Return actual output if any, otherwise empty string.
                 return True, output.strip() if output else ""
             else:
                 error_message = error.strip()
-                # Prepend command name to error for terminal-like feel
                 if not error_message.lower().startswith("groupdel:"):
                     error_message = f"groupdel: {error_message}"
 
-                # Specific common errors, ensure they are also well-formed
                 if "does not exist" in error.lower():
-                    # Ensure the standard message format
                     error_message = f"groupdel: group '{group_name}' does not exist"
                 elif "cannot remove the primary group of user" in error.lower():
-                    # Extract the concerned user if possible, for a more informative message
                     match = re.search(r"cannot remove the primary group of user '([^']*)'", error)
                     if match:
                         concerned_user = match.group(1)
                         error_message = f"groupdel: cannot remove the primary group of user '{concerned_user}'"
-                    # else, the generic error_message (already prefixed) will be used.
                 
                 return False, error_message
         except Exception as e:
@@ -669,11 +629,9 @@ class SeniorDashboardBackend:
                     action="System Group Modified",
                     details=", ".join(log_details)
                 )
-                # groupmod is silent on success. Return actual output if any, otherwise empty string.
                 return True, output.strip() if output else ""
             else:
                 error_message = error.strip()
-                # Prepend command name to error for terminal-like feel
                 if not error_message.lower().startswith("groupmod:"):
                     error_message = f"groupmod: {error_message}"
                 return False, error_message
@@ -712,7 +670,7 @@ class SeniorDashboardBackend:
             elif group:
                 ownership_spec = f":{group}"
                 
-            # Build the chown command
+            # Build chown command
             cmd_parts = ["sudo chown"]
             if recursive:
                 cmd_parts.append("-R")
@@ -724,20 +682,18 @@ class SeniorDashboardBackend:
             
             if error:
                 self.logger.error(f"Error changing file ownership for {path}: {error}")
-                # Ensure error is prefixed with chown:
                 error_message = error.strip()
                 if not error_message.lower().startswith("chown:"):
                     error_message = f"chown: {error_message}"
                 return False, error_message
                 
-            # Log the action
+            # Log the change
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="File Ownership Changed",
                 details=f"Path: {path}, Owner: {owner}, Group: {group}, Recursive: {recursive}"
             )
             
-            # chown is silent on success. Return actual output if any (unlikely), otherwise empty string.
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -761,36 +717,31 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Validate permissions format
             if not re.match(r"^[0-7]{3,4}$", permissions):
                 return False, "chmod: Invalid permissions format. Use octal (e.g., 755)."
                 
-            # Build the chmod command
             cmd_parts = ["sudo chmod"]
             if recursive:
                 cmd_parts.append("-R")
             cmd_parts.append(permissions)
-            cmd_parts.append(f"\"{path}\"")  # Quote path to handle spaces
+            cmd_parts.append(f"\"{path}\"")
             
             cmd = " ".join(cmd_parts)
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error changing file permissions: {error}")
-                # Ensure error is prefixed with chmod:
                 error_message = error.strip()
                 if not error_message.lower().startswith("chmod:"):
                     error_message = f"chmod: {error_message}"
                 return False, error_message
                 
-            # Log the action
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="File Permissions Changed",
                 details=f"Path: {path}, Permissions: {permissions}, Recursive: {recursive}"
             )
             
-            # chmod is silent on success. Return actual output if any (unlikely), otherwise empty string.
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -811,13 +762,11 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Run getfacl command
             cmd = f"getfacl \"{path}\""
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error getting ACL for {path}: {error}")
-                # Ensure error is prefixed with getfacl:
                 error_message = error.strip()
                 if not error_message.lower().startswith("getfacl:"):
                     error_message = f"getfacl: {error_message}"
@@ -845,33 +794,29 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the setfacl command
             cmd_parts = ["sudo setfacl"]
             if recursive:
                 cmd_parts.append("-R")
-            cmd_parts.append("-m")  # modify
-            cmd_parts.append(f"\"{acl_spec}\"")  # Quote ACL spec to handle spaces
-            cmd_parts.append(f"\"{path}\"")  # Quote path to handle spaces
+            cmd_parts.append("-m")
+            cmd_parts.append(f"\"{acl_spec}\"")
+            cmd_parts.append(f"\"{path}\"")
             
             cmd = " ".join(cmd_parts)
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error setting ACL for {path}: {error}")
-                # Ensure error is prefixed with setfacl:
                 error_message = error.strip()
                 if not error_message.lower().startswith("setfacl:"):
                     error_message = f"setfacl: {error_message}"
                 return False, error_message
                 
-            # Log the action
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="File ACL Set",
                 details=f"Path: {path}, ACL: {acl_spec}, Recursive: {recursive}"
             )
             
-            # setfacl is silent on success. Return actual output if any (unlikely), otherwise empty string.
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -894,33 +839,29 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the setfacl command
             cmd_parts = ["sudo setfacl"]
             if recursive:
                 cmd_parts.append("-R")
-            cmd_parts.append("-x")  # remove specified entries
-            cmd_parts.append(f"\"{acl_spec}\"")  # Quote ACL spec to handle spaces
-            cmd_parts.append(f"\"{path}\"")  # Quote path to handle spaces
+            cmd_parts.append("-x")
+            cmd_parts.append(f"\"{acl_spec}\"")
+            cmd_parts.append(f"\"{path}\"")
             
             cmd = " ".join(cmd_parts)
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error removing ACL for {path}: {error}")
-                # Ensure error is prefixed with setfacl:
                 error_message = error.strip()
                 if not error_message.lower().startswith("setfacl:"):
                     error_message = f"setfacl: {error_message}"
                 return False, error_message
                 
-            # Log the action
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="File ACL Removed",
                 details=f"Path: {path}, ACL: {acl_spec}, Recursive: {recursive}"
             )
             
-            # setfacl is silent on success. Return actual output if any (unlikely), otherwise empty string.
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -942,26 +883,22 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the setfacl command
-            cmd = f"sudo setfacl -k \"{path}\""  # Quote path to handle spaces
+            cmd = f"sudo setfacl -k \"{path}\""
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error removing default ACL for {path}: {error}")
-                # Ensure error is prefixed with setfacl:
                 error_message = error.strip()
                 if not error_message.lower().startswith("setfacl:"):
                     error_message = f"setfacl: {error_message}"
                 return False, error_message
                 
-            # Log the action
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="Default ACL Removed",
                 details=f"Path: {path}"
             )
             
-            # setfacl is silent on success. Return actual output if any (unlikely), otherwise empty string.
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -1040,7 +977,7 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the ping command
+            # Run ping command
             cmd = f"ping -c {count} {host}"
             output, error = self.remote.execute_command(cmd)
             
@@ -1048,7 +985,7 @@ class SeniorDashboardBackend:
                 self.logger.error(f"Error pinging {host}: {error}")
                 return False, error.strip()
                 
-            # Check if the ping was successful (contains "bytes from")
+            # Check if ping was successful
             success = "bytes from" in output
             
             # Log the action
@@ -1075,7 +1012,7 @@ class SeniorDashboardBackend:
             return [], "Remote connection not available."
             
         try:
-            # Execute the ip address command to get interface information
+            # Get all network interfaces
             cmd = "ip -o addr show"
             output, error = self.remote.execute_command(cmd)
             
@@ -1088,20 +1025,20 @@ class SeniorDashboardBackend:
                 if not line.strip():
                     continue
                     
-                # Parse the ip addr output
+                # Parse interface details
                 parts = line.strip().split()
                 if len(parts) >= 4:
                     idx = parts[0].rstrip(":")
                     name = parts[1]
                     
-                    # Find the inet (IPv4) or inet6 (IPv6) address
+                    # Find IPv4 address if available
                     ip_address = ""
                     for i, part in enumerate(parts):
                         if part == "inet" and i+1 < len(parts):
                             ip_address = parts[i+1].split("/")[0]
                             break
                     
-                    # Check if interface is up
+                    # Check if interface is UP
                     state_cmd = f"ip link show {name}"
                     state_output, state_error = self.remote.execute_command(state_cmd)
                     state = "DOWN"
@@ -1134,13 +1071,13 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the command to enable the interface
+            # Set interface to UP state
             cmd = f"sudo ip link set {interface_name} up"
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error enabling interface {interface_name}: {error}")
-                # Format error message for terminal-like output
+                # Format error for consistency
                 if not error.lower().startswith("ip:"):
                     error = f"ip: {error.strip()}"
                 return False, error
@@ -1152,7 +1089,6 @@ class SeniorDashboardBackend:
                 details=f"Interface: {interface_name}"
             )
             
-            # ip link command is silent on success, return empty string
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -1173,25 +1109,21 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the command to disable the interface
             cmd = f"sudo ip link set {interface_name} down"
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error disabling interface {interface_name}: {error}")
-                # Format error message for terminal-like output
                 if not error.lower().startswith("ip:"):
                     error = f"ip: {error.strip()}"
                 return False, error
                 
-            # Log the action
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="Network Interface Disabled",
                 details=f"Interface: {interface_name}"
             )
             
-            # ip link command is silent on success, return empty string
             return True, output.strip() if output else ""
             
         except Exception as e:
@@ -1214,25 +1146,24 @@ class SeniorDashboardBackend:
             return False, "Remote connection not available."
             
         try:
-            # Build the command to set the IP address
+            # Add IP address to interface
             cmd = f"sudo ip addr add {ip_address}/{netmask} dev {interface_name}"
             output, error = self.remote.execute_command(cmd)
             
             if error:
                 self.logger.error(f"Error setting IP address for {interface_name}: {error}")
-                # Format error message for terminal-like output
+                # Format error for consistency
                 if not error.lower().startswith("ip:"):
                     error = f"ip: {error.strip()}"
                 return False, error
                 
-            # Log the action
+            # Log successful IP configuration
             self.db_manager.add_system_log(
                 user=self.current_user,
                 action="Network Interface IP Address Set",
                 details=f"Interface: {interface_name}, IP: {ip_address}/{netmask}"
             )
             
-            # ip addr command is silent on success, return empty string
             return True, output.strip() if output else ""
             
         except Exception as e:
