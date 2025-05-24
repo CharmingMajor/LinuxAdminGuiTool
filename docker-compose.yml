@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  test-system-1:
+    build: 
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: linux-admin-test-1
+    ports:
+      - "2222:22"
+    restart: unless-stopped
+    hostname: test-system-1
+    networks:
+      - admin-net
+
+  test-system-2:
+    build: 
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: linux-admin-test-2
+    ports:
+      - "2223:22"
+    restart: unless-stopped
+    hostname: test-system-2
+    networks:
+      - admin-net
+
+networks:
+  admin-net:
+    driver: bridge

@@ -1,0 +1,17 @@
+{
+    "junior": {
+        "failed_attempts": 0,
+        "last_attempt": null,
+        "locked_until": null,
+        "password": "$2b$12$EbdWLqnE9LJoWHJDyVfxLua3V6yzkpoi4YEnzsQb5B96bY8OU3opa",
+        "role": "junior"
+    },
+    "senior": {
+        "failed_attempts": 0,
+        "last_attempt": null,
+        "last_failed_attempt_ts": null,
+        "locked_until": null,
+        "password": "$2b$12$D58FMtPdsFL.NltoSAYSiuL.0TM3uBp7T7WciO7K6isJq8mFtRTxu",
+        "role": "senior"
+    }
+}

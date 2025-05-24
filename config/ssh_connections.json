@@ -1,0 +1,12 @@
+{
+    "localhost": {
+        "name": "localhost",
+        "hostname": "localhost",
+        "port": 2222,
+        "username": "adminuser",
+        "auth_method": "Password",
+        "key_path": null,
+        "passphrase": null,
+        "password": "admin123"
+    }
+}
