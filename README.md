@@ -43,7 +43,9 @@ Start -> Launch GUI tool -> login junior/senior -> SSH remote gui -> authenticat
 
 ## Screenshots
 
-[Screenshots will be added here]
+![Screenshot 1](./screenshots/image.png)
+![Screenshot 2](./screenshots/image%20copy.png)
+![Screenshot 3](./screenshots/image%20copy%202.png)
 
 ## Technical Details
 
