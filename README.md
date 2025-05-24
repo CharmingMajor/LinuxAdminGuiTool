@@ -96,7 +96,7 @@ python src/main.py
 The application can also be run in a Docker container:
 
 ```bash
-# Build and run with docker-compose
+# Build and run with docker-compose but make sure you have docker GUI installed on Linux
 docker-compose up
 ```
 
